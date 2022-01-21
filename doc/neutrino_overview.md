@@ -33,8 +33,11 @@ from there, several methods are available
 ***setMeasurementIntervalMs(long interval)*** sets the amount of time between reads that the driver should wait. Beyond changing the update rate, this will actually change the accuracy of the sensor, with longer wait times giving more precise data. **NOTE: This value is overridden by setSensorAccuracyMode**
 
 ***setSensorAccuracyMode(AccuracyMode mode)*** sets the accuracy mode of the sensor. **THIS IS OVERRIDDEN BY setMeasurementIntervalMs**. The following presets are available:
+
 MODE_HIGH_ACCURACY: 150ms delay between reads, gives the most precise values at a low speed
+
 MODE_BALANCED: 75ms delay between reads, gives a good balance of speed and precision
+
 MODE_HIGH_SPEED: 33ms delay between reads, gives the fastest reads and lowest precision. NOTE: This is the stock operation mode of the driver
 
 ***disable()***: Disables the device, stopping reads from occurring in the background
