@@ -18,21 +18,4 @@ Projects at a glance:
  - [Neutrino Overview](https://github.com/Eeshwar-Krishnan/PhotonFTC/blob/main/doc/neutrino_overview.md)
 
 ## Installation instructions :
-
-Installation is simple. Just go to build.gradle in your TeamCode module and add the following
-
-```
-maven { url 'https://jitpack.io' }
-```
-
-in repositories.
-
-Then, add the following depending on what you want to install
-
-**NeutrinoI2C**
-
-```
-implementation 'com.github.OutoftheBoxFTC:EasyTensorflowAPI:v1.0.0'
-```
-
-in dependencies. Then run a gradle sync, and everything should download!
+Coming soon
