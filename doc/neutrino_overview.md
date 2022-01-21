@@ -41,4 +41,5 @@ MODE_BALANCED: 75ms delay between reads, gives a good balance of speed and preci
 MODE_HIGH_SPEED: 33ms delay between reads, gives the fastest reads and lowest precision. NOTE: This is the stock operation mode of the driver
 
 ***disable()***: Disables the device, stopping reads from occurring in the background
+
 ***enable()***: Enables the device, starting reads in the background again
