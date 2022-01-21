@@ -20,7 +20,7 @@ Projects at a glance:
  - [Neutrino Overview](https://github.com/Eeshwar-Krishnan/PhotonFTC/blob/main/doc/neutrino_overview.md)
 
 ## Installation instructions :
-Installation is simple. Just go to build.dependencies.gradle in your project and add the following
+Installation is simple. Just go to build.gradle in your Teamcode module and add the following
 
 ```
 maven { url 'https://jitpack.io' }
