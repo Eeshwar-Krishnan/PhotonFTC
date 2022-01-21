@@ -17,4 +17,8 @@ allprojects {
 subprojects {
     apply plugin: 'maven-publish'
     group = 'com.github.EeshwarKrishnan'
+
+    repositories{
+        google()
+    }
 }
