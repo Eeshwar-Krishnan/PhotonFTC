@@ -34,7 +34,11 @@ import java.util.concurrent.atomic.AtomicLong;
 public class AsyncRev2MSensor implements OpModeManagerNotifier.Notifications, Runnable{
     private static final int RESULT_INTERRUPT_STATUS = 0x13, RESULT_RANGE_STATUS = 0x14, SYSTEM_INTERRUPT_CLEAR = 0x0B;
 
-    public static int MODE_HIGH_SPEED = 0, MODE_BALANCED = 1, MODE_HIGH_ACCURACY = 2;
+    enum AccuracyMode{
+        MODE_HIGH_SPEED,
+        MODE_BALANCED,
+        MODE_HIGH_ACCURACY
+    }
 
     private static EventLoop staticEventLoop;
 
@@ -53,6 +57,8 @@ public class AsyncRev2MSensor implements OpModeManagerNotifier.Notifications, Ru
     private final AtomicBoolean enabled = new AtomicBoolean(true);
 
     private Method setTimingBudgetMethod;
+
+    private AtomicBoolean hasNewData = new AtomicBoolean(false);
 
     @OnCreateEventLoop
     public static void attachEventLoop(Context context, FtcEventLoop eventLoop) {
@@ -159,6 +165,7 @@ public class AsyncRev2MSensor implements OpModeManagerNotifier.Notifications, Ru
     }
 
     public double getDistance(DistanceUnit unit){
+        hasNewData.set(false);
         double range = (double)this.range.get();
         if (unit == DistanceUnit.CM) {
             return range / 10;
@@ -229,6 +236,7 @@ public class AsyncRev2MSensor implements OpModeManagerNotifier.Notifications, Ru
                         LynxI2cReadStatusQueryCommand command = new LynxI2cReadStatusQueryCommand(module, bus, 2);
                         LynxI2cReadStatusQueryResponse response = command.sendReceive(); //Read the 2 bytes we asked for previously
                         range.set(TypeConversion.byteArrayToShort(response.getBytes()));
+                        hasNewData.set(true);
                         prevRun.set(System.currentTimeMillis()); //Timer starts the moment we read the data, we can guarantee that after
                         //the timing budget window there is fresh data
                         //After all, we are receiving the data after a ~5ms delay so the sensor should have plenty of time to read new data
@@ -286,14 +294,14 @@ public class AsyncRev2MSensor implements OpModeManagerNotifier.Notifications, Ru
      * @param mode
      * @return
      */
-    public boolean setSensorAccuracyMode(int mode){
-        if(mode == 0){
+    public boolean setSensorAccuracyMode(AccuracyMode mode){
+        if(mode == AccuracyMode.MODE_HIGH_SPEED){
             return setMeasurementIntervalMs(33);
         }
-        if(mode == 1){
+        if(mode == AccuracyMode.MODE_BALANCED){
             return setMeasurementIntervalMs(75);
         }
-        if(mode == 2){
+        if(mode == AccuracyMode.MODE_HIGH_ACCURACY){
             return setMeasurementIntervalMs(150);
         }
         return false;
@@ -331,6 +339,13 @@ public class AsyncRev2MSensor implements OpModeManagerNotifier.Notifications, Ru
         } catch (IllegalAccessException | InvocationTargetException e) {
             e.printStackTrace();
         }
+    }
+
+    /**
+     * Returns true if new data has been acquired since the last call to getDistance()
+     */
+    public boolean hasNewData(){
+        return hasNewData.get();
     }
 
     /**

@@ -11,7 +11,7 @@ public class Async2mExampleOpmode extends LinearOpMode {
 
     @Override
     public void runOpMode() throws InterruptedException {
-        Rev2mDistanceSensor sensor = hardwareMap.get(Rev2mDistanceSensor.class, "test");
+        Rev2mDistanceSensor sensor = hardwareMap.get(Rev2mDistanceSensor.class, "distancesensor");
         AsyncRev2MSensor asyncSensor = new AsyncRev2MSensor(sensor);
 
         telemetry.addLine("Press a for high accuracy, x for balanced accuracy, and b for high speed");
@@ -22,13 +22,13 @@ public class Async2mExampleOpmode extends LinearOpMode {
             telemetry.addData("git Last Reading", asyncSensor.getLastMeasurementTimestamp());
 
             if(gamepad1.a){
-                asyncSensor.setSensorAccuracyMode(AsyncRev2MSensor.MODE_HIGH_ACCURACY);
+                asyncSensor.setSensorAccuracyMode(AsyncRev2MSensor.AccuracyMode.MODE_HIGH_ACCURACY);
             }
             if(gamepad1.x){
-                asyncSensor.setSensorAccuracyMode(AsyncRev2MSensor.MODE_BALANCED);
+                asyncSensor.setSensorAccuracyMode(AsyncRev2MSensor.AccuracyMode.MODE_BALANCED);
             }
             if(gamepad1.b){
-                asyncSensor.setSensorAccuracyMode(AsyncRev2MSensor.MODE_HIGH_SPEED);
+                asyncSensor.setSensorAccuracyMode(AsyncRev2MSensor.AccuracyMode.MODE_HIGH_SPEED);
             }
 
             telemetry.update();
