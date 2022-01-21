@@ -43,3 +43,5 @@ MODE_HIGH_SPEED: 33ms delay between reads, gives the fastest reads and lowest pr
 ***disable()***: Disables the device, stopping reads from occurring in the background
 
 ***enable()***: Enables the device, starting reads in the background again
+
+[Example Opmode](https://github.com/Eeshwar-Krishnan/PhotonFTC/blob/main/NeutrinoI2C/src/main/java/org/outoftheboxrobotics/neutrinoi2c/Rev2mDistanceSensor/Async2mExampleOpmode.java)
