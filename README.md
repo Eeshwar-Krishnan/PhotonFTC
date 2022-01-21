@@ -13,8 +13,7 @@ Projects at a glance:
      - Speeding up and paralleling the FTC control system for faster loop times
 
 ## Documentation:
-
- - [Neutrino Overview] (https://github.com/Eeshwar-Krishnan/PhotonFTC/blob/main/doc/neutrino_overview.md)
+ - [Neutrino Overview](https://github.com/Eeshwar-Krishnan/PhotonFTC/blob/main/doc/neutrino_overview.md)
 
 ## Installation instructions :
 
