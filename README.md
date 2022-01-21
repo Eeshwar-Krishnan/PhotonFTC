@@ -15,8 +15,7 @@ Projects at a glance:
 **NOTE**: There is no cross dependency in PhotonFTC. That means you can install one project individually without the others, and you do NOT have to download everything if you do not want to.
 
 ## Documentation:
-
- - Coming soon
+ - [Neutrino Overview](https://github.com/Eeshwar-Krishnan/PhotonFTC/blob/main/doc/neutrino_overview.md)
 
 ## Installation instructions :
 
