@@ -1,0 +1,53 @@
+plugins {
+    id 'com.android.library'
+    id 'maven-publish'
+}
+
+repositories {
+    mavenCentral()
+}
+
+android {
+    compileSdkVersion 30
+    buildToolsVersion "30.0.3"
+
+    defaultConfig {
+        minSdkVersion 21
+        targetSdkVersion 30
+        versionCode 1
+        versionName "1.0"
+
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+    }
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+}
+
+afterEvaluate {
+    publishing {
+        publications {
+            // Creates a Maven publication called "release".
+            release(MavenPublication) {
+                // Applies the component for the release build variant.
+                from components.release
+            }
+        }
+    }
+}
+
+dependencies {
+    implementation 'org.jetbrains:annotations:15.0'
+
+    compileOnly 'org.firstinspires.ftc:RobotCore:7.0.0'
+    compileOnly 'org.firstinspires.ftc:Hardware:7.0.0'
+    compileOnly 'org.firstinspires.ftc:FtcCommon:7.0.0'
+
+}

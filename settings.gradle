@@ -1,2 +1,3 @@
 rootProject.name = "PhotonFTC"
 include ':NeutrinoI2C'
+include ':PhotonCore'
