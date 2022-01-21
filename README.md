@@ -12,10 +12,28 @@ Projects at a glance:
  - **PhotonCore**
      - Speeding up and paralleling the FTC control system for faster loop times
 
+**NOTE**: There is no cross dependency in PhotonFTC. That means you can install one project individually without the others, and you do NOT have to download everything if you do not want to.
+
 ## Documentation:
 
  - Coming soon
 
 ## Installation instructions :
 
-Coming Soon
+Installation is simple. Just go to build.gradle in your TeamCode module and add the following
+
+```
+maven { url 'https://jitpack.io' }
+```
+
+in repositories.
+
+Then, add the following depending on what you want to install
+
+**NeutrinoI2C**
+
+```
+implementation 'com.github.OutoftheBoxFTC:EasyTensorflowAPI:v1.0.0'
+```
+
+in dependencies. Then run a gradle sync, and everything should download!
