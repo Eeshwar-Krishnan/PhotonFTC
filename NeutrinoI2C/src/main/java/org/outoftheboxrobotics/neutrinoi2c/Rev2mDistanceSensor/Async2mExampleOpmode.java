@@ -19,7 +19,7 @@ public class Async2mExampleOpmode extends LinearOpMode {
         waitForStart();
         while(opModeIsActive()){
             telemetry.addData("Distance", asyncSensor.getDistance(DistanceUnit.CM));
-            telemetry.addData("git Last Reading", asyncSensor.getLastMeasurementTimestamp());
+            telemetry.addData("Last Reading", asyncSensor.getLastMeasurementTimestamp());
 
             if(gamepad1.a){
                 asyncSensor.setSensorAccuracyMode(AsyncRev2MSensor.AccuracyMode.MODE_HIGH_ACCURACY);
