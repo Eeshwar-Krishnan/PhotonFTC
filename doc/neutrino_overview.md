@@ -6,7 +6,7 @@ NeutrinoI2C is a collection of optimized drivers for stock i2c devices.
 
 ### Why does this exist?
 
-FIRST does a great job of creating new I2C drivers for teams to use, but I2C in FTC has some inherent limitations causing them to slow down. By specifically optimizing each driver by hand for the given device, we can squeeze out slightly better performance.NeutrinoI2C
+FIRST does a great job of creating new I2C drivers for teams to use, but I2C in FTC has some inherent limitations causing them to slow down. By specifically optimizing each driver by hand for the given device, we can squeeze out slightly better performance.
 
 In addition, there are some structural changes that can be made, like making the driver asynchronous so that it does not block user code from running, and we can also expose methods to the user that are otherwise hidden
 
