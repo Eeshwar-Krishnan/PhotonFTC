@@ -34,7 +34,7 @@ import java.util.concurrent.atomic.AtomicLong;
 public class AsyncRev2MSensor implements OpModeManagerNotifier.Notifications, Runnable{
     private static final int RESULT_INTERRUPT_STATUS = 0x13, RESULT_RANGE_STATUS = 0x14, SYSTEM_INTERRUPT_CLEAR = 0x0B;
 
-    enum AccuracyMode{
+    public enum AccuracyMode{
         MODE_HIGH_SPEED,
         MODE_BALANCED,
         MODE_HIGH_ACCURACY
