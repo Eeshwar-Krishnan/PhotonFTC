@@ -77,4 +77,24 @@ public class PhotonMotor extends DcMotorImplEx {
         }
         return unit.convert(current, CurrentUnit.MILLIAMPS);
     }
+
+    @Override
+    public synchronized int getCurrentPosition() {
+        return PhotonCore.getBulkData(module.getModuleAddress()).getMotorCurrentPosition(port);
+    }
+
+    @Override
+    public synchronized double getVelocity() {
+        return PhotonCore.getBulkData(module.getModuleAddress()).getMotorVelocity(port);
+    }
+
+    @Override
+    public boolean isBusy() {
+        return PhotonCore.getBulkData(module.getModuleAddress()).isMotorBusy(port);
+    }
+
+    @Override
+    public boolean isOverCurrent() {
+        return PhotonCore.getBulkData(module.getModuleAddress()).isMotorOverCurrent(port);
+    }
 }

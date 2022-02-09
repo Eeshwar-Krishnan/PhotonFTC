@@ -27,7 +27,7 @@ public class PhotonCore {
     private final HashMap<LynxStandardCommandV2, Long> lastRequest;
 
     private List<LynxModule> modules;
-    private HashMap<Integer, BulkData> bulkData;
+    private final HashMap<Integer, BulkData> bulkData;
 
     public PhotonCore(){
         sentCommands = new ArrayList<>();
@@ -100,7 +100,9 @@ public class PhotonCore {
     }
 
     protected static BulkData getBulkData(int moduleAddress){
-        return instance.bulkData.get(moduleAddress);
+        synchronized (instance.bulkData) {
+            return instance.bulkData.get(moduleAddress);
+        }
     }
 
     public static void update(){
@@ -133,6 +135,7 @@ public class PhotonCore {
             }
         }
 
+        //Make sure to resend any command that was nacked
         ArrayList<LynxStandardCommandV2> resendCommands = new ArrayList<>();
         while(instance.sentCommands.size() > 0){
             for(LynxStandardCommandV2 command : instance.sentCommands){
@@ -150,6 +153,7 @@ public class PhotonCore {
             instance.registerSend(command);
         }
 
+        //Wait for everything to be responded to so that we can get all the data we need for the next loop
         boolean end = false;
         while(!end){
             end = true;
@@ -167,7 +171,9 @@ public class PhotonCore {
         //Finally grab the bulk data
         for(LynxModule module : bulkCommands.keySet()){
             while(!bulkCommands.get(module).isResponded());
-            instance.bulkData.put(module.getModuleAddress(), new BulkData(bulkCommands.get(module).getResponse(), false));
+            synchronized (instance.bulkData) {
+                instance.bulkData.put(module.getModuleAddress(), new BulkData(bulkCommands.get(module).getResponse(), false));
+            }
         }
 
         //Prune the bulk requests that haven't been used for over a second
