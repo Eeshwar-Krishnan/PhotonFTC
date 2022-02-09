@@ -45,3 +45,22 @@ MODE_HIGH_SPEED: 33ms delay between reads, gives the fastest reads and lowest pr
 ***enable()***: Enables the device, starting reads in the background again
 
 [Example Opmode](https://github.com/Eeshwar-Krishnan/PhotonFTC/blob/main/NeutrinoI2C/src/main/java/org/outoftheboxrobotics/neutrinoi2c/Rev2mDistanceSensor/Async2mExampleOpmode.java)
+
+
+### MB1242
+
+The Async MB1242 option will show up in the hardware config after a download, assign it there and just use
+
+```java
+AsyncMB1242 sensor = hardwareMap.get(AsyncMB1242.class, "mb1242");
+```
+
+from there, several methods are available
+
+***getDistance(DistanceUnit unit)***: Gets the measured distance from the sensor. Method is non-blocking and returned data is NOT guaranteed to be new. Pings device automatically
+
+***disable()***: Disables the device, stopping reads from occurring in the background
+
+***enable()***: Enables the device, starting reads in the background again
+
+[Example Opmode](https://github.com/Eeshwar-Krishnan/PhotonFTC/blob/main/NeutrinoI2C/src/main/java/org/outoftheboxrobotics/neutrinoi2c/MB1242/AsyncMB1242ExampleOpmode.java)
