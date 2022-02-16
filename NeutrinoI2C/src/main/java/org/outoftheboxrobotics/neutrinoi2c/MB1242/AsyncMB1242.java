@@ -44,7 +44,7 @@ public class AsyncMB1242 extends I2cDeviceSynchDevice<I2cDeviceSynch> implements
 
     private AtomicLong minRunDelayMs = new AtomicLong(20);
 
-    private final AtomicBoolean running = new AtomicBoolean(true), enabled = new AtomicBoolean(true);
+    private final AtomicBoolean running = new AtomicBoolean(true), enabled = new AtomicBoolean(false);
     private final AtomicInteger rangeMM = new AtomicInteger(0);
 
     private final LynxModule module;
@@ -218,6 +218,7 @@ public class AsyncMB1242 extends I2cDeviceSynchDevice<I2cDeviceSynch> implements
                             //I2C NACK returned; ranging is still in progress
                             LynxI2cReadMultipleBytesCommand command2 = new LynxI2cReadMultipleBytesCommand(module, bus, address, 2);
                             command2.send();
+                            Thread.sleep(5);
                             return false;
                         }
                     });
@@ -232,7 +233,7 @@ public class AsyncMB1242 extends I2cDeviceSynchDevice<I2cDeviceSynch> implements
                             // Besides, we're not *truly* busy looping, we still end up waiting for the module's response
                             // and what not.
 
-                            try { Thread.sleep(3); } catch (InterruptedException ignored) { Thread.currentThread().interrupt(); }
+                            try { Thread.sleep(5); } catch (InterruptedException ignored) { Thread.currentThread().interrupt(); }
                             continue;
                         case I2C_NO_RESULTS_PENDING:
                             // This is an internal error of some sort
