@@ -8,6 +8,8 @@ import com.qualcomm.hardware.lynx.LynxDcMotorController;
 import com.qualcomm.hardware.lynx.LynxModule;
 import com.qualcomm.hardware.lynx.LynxNackException;
 import com.qualcomm.hardware.lynx.LynxUnsupportedCommandException;
+import com.qualcomm.hardware.lynx.commands.LynxMessage;
+import com.qualcomm.hardware.lynx.commands.LynxResponse;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.HardwareMap;
@@ -38,6 +40,7 @@ public class PhotonCore {
 
     public static void setup(HardwareMap map){
         instance.modules = map.getAll(LynxModule.class);
+        ArrayList<String> moduleNames = new ArrayList<>();
         for(LynxModule module : instance.modules){
             com.qualcomm.hardware.lynx.commands.core.LynxGetBulkInputDataCommand command = new com.qualcomm.hardware.lynx.commands.core.LynxGetBulkInputDataCommand(module);
             try {
@@ -45,7 +48,22 @@ public class PhotonCore {
             } catch (InterruptedException | LynxNackException e) {
                 e.printStackTrace();
             }
+            moduleNames.add((String) map.getNamesOf(module).toArray()[0]);
         }
+        for(String s : moduleNames){
+            LynxModule module = (LynxModule) map.get(s);
+            try {
+                PhotonLynxModule photonLynxModule = new PhotonLynxModule(
+                ReflectionUtils.getField(LynxModule.class, "lynxUsbDevice").get(module),
+                ReflectionUtils.getField(LynxModule.class, "moduleAddress").get(module),
+                ReflectionUtils.getField(LynxModule.class, "isParent").get(module),
+                ReflectionUtils.getField(LynxModule.class, "isUserModule").get(module)
+                );
+                map.remove(s, map.get(s));
+                map.put(s, photonLynxModule);
+            } catch (IllegalAccessException e) {
+                e.printStackTrace();
+            } }
 
         for(DcMotorEx motor : map.getAll(DcMotorEx.class)){
             String name = (String) map.getNamesOf(motor).toArray()[0];
@@ -74,29 +92,32 @@ public class PhotonCore {
         }
     }
 
-    protected static void registerGet(LynxStandardCommandV2 command){
-        boolean copied = false;
+    protected static LynxMessage registerGet(LynxStandardCommandV2 command){
         for(LynxStandardCommandV2 otherCommand : instance.getCommands){
             if (otherCommand.getDestModuleAddress() == command.getDestModuleAddress() &&
                     otherCommand.getCommandNumber() == command.getCommandNumber() &&
                     Arrays.equals(otherCommand.toPayloadByteArray(), command.toPayloadByteArray())) {
-                copied = true;
                 instance.lastRequest.put(otherCommand, System.currentTimeMillis());
-                break;
+                return otherCommand.getResponse();
             }
         }
-        if(!copied){
-            try {
-                command.getModule().acquireNetworkTransmissionLock(command); //Get the network lock in order to send safely
-                command.getModule().sendCommand(command); //Send out the command!
-                command.getModule().releaseNetworkTransmissionLock(command); //Don't need this anymore, will check for response later
+        try {
+            command.getModule().acquireNetworkTransmissionLock(command); //Get the network lock in order to send safely
+            command.getModule().sendCommand(command); //Send out the command!
+            command.getModule().releaseNetworkTransmissionLock(command); //Don't need this anymore, will check for response later
 
-                instance.getCommands.add(command); //Keep track of this so we can send it regularly
-                instance.lastRequest.put(command, System.currentTimeMillis());
-            } catch (InterruptedException | LynxUnsupportedCommandException e) {
-                e.printStackTrace();
-            }
+            long timer = System.currentTimeMillis() + 25;
+            while(!command.isResponded() && timer > System.currentTimeMillis());
+
+            instance.getCommands.add(command); //Keep track of this so we can send it regularly
+            instance.lastRequest.put(command, System.currentTimeMillis());
+
+            return command.getResponse();
+        } catch (InterruptedException | LynxUnsupportedCommandException e) {
+            e.printStackTrace();
         }
+
+        return null;
     }
 
     protected static BulkData getBulkData(int moduleAddress){
