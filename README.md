@@ -11,6 +11,7 @@ Projects at a glance:
  - **NeutrinoI2C**
       - Speeding up, optimizing, and expanding stock I2C drivers including
            - Rev 2M Distance Sensor (supports asynchronous non-blocking reading and different accuracy modes)
+           - MB1242 Ultrasonic Sensor (Asynchronous sensing and auto-ping)
  - **PhotonCore**
      - Speeding up and paralleling the FTC control system for faster loop times
 
@@ -30,7 +31,7 @@ Then, depending on which project you want to install, add the following under de
 
 **NeutrinoI2C**:
 ```
-implementation 'com.github.Eeshwar-Krishnan:PhotonFTC:v1.0.2'
+implementation 'com.github.Eeshwar-Krishnan:PhotonFTC:v1.0.3'
 ```
 
 Then run a gradle sync, and everything should download!
