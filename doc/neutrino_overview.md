@@ -57,6 +57,8 @@ AsyncMB1242 sensor = hardwareMap.get(AsyncMB1242.class, "mb1242");
 
 from there, several methods are available
 
+**Remember the sensor MUST be enabled in order to be used, it starts disabled by default**
+
 ***getDistance(DistanceUnit unit)***: Gets the measured distance from the sensor. Method is non-blocking and returned data is NOT guaranteed to be new. Pings device automatically
 
 ***disable()***: Disables the device, stopping reads from occurring in the background
