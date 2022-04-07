@@ -31,7 +31,7 @@ Then, depending on which project you want to install, add the following under de
 
 **NeutrinoI2C**:
 ```
-implementation 'com.github.Eeshwar-Krishnan:PhotonFTC:v1.0.3'
+implementation 'com.github.Eeshwar-Krishnan.PhotonFTC:NeutrinoI2C:v1.0.4'
 ```
 
 Then run a gradle sync, and everything should download!
