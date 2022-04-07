@@ -2,17 +2,22 @@ package com.outoftheboxrobotics.photoncore;
 
 import com.outoftheboxrobotics.photoncore.Commands.BulkData;
 import com.outoftheboxrobotics.photoncore.Commands.LynxStandardCommandV2;
-import com.outoftheboxrobotics.photoncore.Commands.V2.LynxGetBulkInputDataCommand;
 import com.outoftheboxrobotics.photoncore.Reflection.ReflectionUtils;
 import com.qualcomm.hardware.lynx.LynxDcMotorController;
 import com.qualcomm.hardware.lynx.LynxModule;
 import com.qualcomm.hardware.lynx.LynxNackException;
 import com.qualcomm.hardware.lynx.LynxUnsupportedCommandException;
+import com.qualcomm.hardware.lynx.LynxUsbDevice;
+import com.qualcomm.hardware.lynx.commands.LynxDatagram;
 import com.qualcomm.hardware.lynx.commands.LynxMessage;
+import com.qualcomm.hardware.lynx.commands.LynxRespondable;
 import com.qualcomm.hardware.lynx.commands.LynxResponse;
+import com.qualcomm.hardware.lynx.commands.core.LynxGetBulkInputDataCommand;
+import com.qualcomm.hardware.lynx.commands.standard.LynxStandardCommand;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.HardwareMap;
+import com.qualcomm.robotcore.util.RobotLog;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -25,180 +30,147 @@ import java.util.function.Predicate;
 public class PhotonCore {
     private static final PhotonCore instance = new PhotonCore();
     private final ArrayList<LynxStandardCommandV2> sentCommands;
-    private final ArrayList<LynxStandardCommandV2> getCommands;
-    private final HashMap<LynxStandardCommandV2, Long> lastRequest;
-
+    private final HashMap<LynxStandardCommandV2, LynxMessage> cachedResponses;
+    private final HashMap<LynxStandardCommandV2, Long> lastReads;
+    private final ArrayList<LynxStandardCommandV2> readCommands, toBulkRead;
     private List<LynxModule> modules;
-    private final HashMap<Integer, BulkData> bulkData;
 
     public PhotonCore(){
         sentCommands = new ArrayList<>();
-        getCommands = new ArrayList<>();
-        bulkData = new HashMap<>();
-        lastRequest = new HashMap<>();
+        lastReads = new HashMap<>();
+        cachedResponses = new HashMap<>();
+        readCommands = new ArrayList<>();
+        toBulkRead = new ArrayList<>();
     }
 
     public static void setup(HardwareMap map){
         instance.modules = map.getAll(LynxModule.class);
         ArrayList<String> moduleNames = new ArrayList<>();
         for(LynxModule module : instance.modules){
-            com.qualcomm.hardware.lynx.commands.core.LynxGetBulkInputDataCommand command = new com.qualcomm.hardware.lynx.commands.core.LynxGetBulkInputDataCommand(module);
-            try {
-                instance.bulkData.put(module.getModuleAddress(), new BulkData(command.sendReceive(), false));
-            } catch (InterruptedException | LynxNackException e) {
-                e.printStackTrace();
-            }
             moduleNames.add((String) map.getNamesOf(module).toArray()[0]);
         }
         for(String s : moduleNames){
             LynxModule module = (LynxModule) map.get(s);
             try {
                 PhotonLynxModule photonLynxModule = new PhotonLynxModule(
-                ReflectionUtils.getField(LynxModule.class, "lynxUsbDevice").get(module),
-                ReflectionUtils.getField(LynxModule.class, "moduleAddress").get(module),
-                ReflectionUtils.getField(LynxModule.class, "isParent").get(module),
-                ReflectionUtils.getField(LynxModule.class, "isUserModule").get(module)
+                        (LynxUsbDevice) ReflectionUtils.getField(LynxUsbDevice.class, "lynxUsbDevice").get(module),
+                        (Integer)ReflectionUtils.getField(Integer.class, "moduleAddress").get(module),
+                        (Boolean)ReflectionUtils.getField(Boolean.class, "isParent").get(module),
+                        (Boolean)ReflectionUtils.getField(Boolean.class, "isUserModule").get(module)
                 );
                 map.remove(s, map.get(s));
                 map.put(s, photonLynxModule);
             } catch (IllegalAccessException e) {
                 e.printStackTrace();
             } }
-
-        for(DcMotorEx motor : map.getAll(DcMotorEx.class)){
-            String name = (String) map.getNamesOf(motor).toArray()[0];
-
-            try {
-                LynxDcMotorController controller = (LynxDcMotorController) ReflectionUtils.getField(DcMotorEx.class, "controllerEx").get(motor);
-                LynxModule module = (LynxModule) ReflectionUtils.getField(DcMotorEx.class, "module").get(motor);
-                int portNum = (int) ReflectionUtils.getField(DcMotorEx.class, "portNumber").get(motor);
-
-                map.remove(name, motor);
-                map.put(name, new PhotonMotor(module, controller, portNum));
-            } catch (IllegalAccessException e) {
-                e.printStackTrace();
-            }
-        }
     }
 
-    protected static void registerSend(LynxStandardCommandV2 command){
+    protected static boolean registerSend(LynxStandardCommandV2 command){
+        long timer = System.currentTimeMillis() + 100;
+        while(instance.sentCommands.size() > 8){
+            if(System.currentTimeMillis() > timer){
+                return false;
+            }
+        }
         try {
             command.getModule().acquireNetworkTransmissionLock(command); //Get the network lock in order to send safely
-            command.getModule().sendCommand(command); //Send out the command!
+            ((PhotonLynxModule)command.getModule()).normalSend(command);
             command.getModule().releaseNetworkTransmissionLock(command); //Don't need this anymore, will check for response later
             instance.sentCommands.add(command); //Keep track of this for ack/nack reasons
+            return true;
         } catch (InterruptedException | LynxUnsupportedCommandException e) {
             e.printStackTrace();
+            return true;
         }
     }
 
-    protected static LynxMessage registerGet(LynxStandardCommandV2 command){
-        for(LynxStandardCommandV2 otherCommand : instance.getCommands){
-            if (otherCommand.getDestModuleAddress() == command.getDestModuleAddress() &&
-                    otherCommand.getCommandNumber() == command.getCommandNumber() &&
-                    Arrays.equals(otherCommand.toPayloadByteArray(), command.toPayloadByteArray())) {
-                instance.lastRequest.put(otherCommand, System.currentTimeMillis());
-                return otherCommand.getResponse();
+    protected static boolean registerGet(LynxStandardCommandV2 command, LynxStandardCommand userCommand) throws LynxNackException, InterruptedException, LynxUnsupportedCommandException {
+        if(((LynxModule)userCommand.getModule()).getBulkCachingMode() == LynxModule.BulkCachingMode.OFF){
+            ((PhotonLynxModule)command.getModule()).normalSend(userCommand);
+        }
+
+        long timer = System.currentTimeMillis() + 100;
+        while(instance.sentCommands.size() > 8){
+            if(System.currentTimeMillis() > timer){
+                return false;
             }
         }
-        try {
-            command.getModule().acquireNetworkTransmissionLock(command); //Get the network lock in order to send safely
-            command.getModule().sendCommand(command); //Send out the command!
-            command.getModule().releaseNetworkTransmissionLock(command); //Don't need this anymore, will check for response later
 
-            long timer = System.currentTimeMillis() + 25;
-            while(!command.isResponded() && timer > System.currentTimeMillis());
-
-            instance.getCommands.add(command); //Keep track of this so we can send it regularly
-            instance.lastRequest.put(command, System.currentTimeMillis());
-
-            return command.getResponse();
-        } catch (InterruptedException | LynxUnsupportedCommandException e) {
-            e.printStackTrace();
+        LynxStandardCommandV2 key = getKey(command);
+        if(key == null || !instance.toBulkRead.contains(key)){
+            command.getModule().acquireNetworkTransmissionLock(userCommand); //Get the network lock in order to send safely
+            ((PhotonLynxModule)command.getModule()).normalSend(userCommand);
+            command.getModule().releaseNetworkTransmissionLock(userCommand); //Don't need this anymore, will check for response later
+            instance.cachedResponses.put(command, command.getResponse());
+            instance.lastReads.put(command, System.currentTimeMillis());
+            instance.toBulkRead.add(command);
+        }else{
+            if(((LynxModule)userCommand.getModule()).getBulkCachingMode() == LynxModule.BulkCachingMode.AUTO) {
+                if(alreadyRead(command)){
+                    onBulkRead(null);
+                }
+            }
+            instance.lastReads.put(command, System.currentTimeMillis());
+            LynxMessage response = instance.cachedResponses.get(key);
+            userCommand.onResponseReceived(response);
         }
+        return true;
+    }
 
+    private static LynxStandardCommandV2 getKey(LynxStandardCommandV2 command){
+        for(LynxStandardCommandV2 other : instance.cachedResponses.keySet()){
+            if (other.getDestModuleAddress() == command.getDestModuleAddress() &&
+                    other.getCommandNumber() == command.getCommandNumber() &&
+                    Arrays.equals(other.toPayloadByteArray(), command.toPayloadByteArray())) {
+                return other;
+            }
+        }
         return null;
     }
 
-    protected static BulkData getBulkData(int moduleAddress){
-        synchronized (instance.bulkData) {
-            return instance.bulkData.get(moduleAddress);
+    private static boolean alreadyRead(LynxStandardCommandV2 command){
+        for(LynxStandardCommandV2 other : instance.readCommands){
+            if (other.getDestModuleAddress() == command.getDestModuleAddress() &&
+                    other.getCommandNumber() == command.getCommandNumber() &&
+                    Arrays.equals(other.toPayloadByteArray(), command.toPayloadByteArray())) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    protected static void onResponse(LynxStandardCommandV2 commandV2){
+        if(instance.sentCommands.contains(commandV2)){
+            instance.sentCommands.remove(commandV2);
+        }else{
+            RobotLog.w("Command response received with no record of sending");
         }
     }
 
-    public static void update(){
-        HashMap<LynxModule, LynxGetBulkInputDataCommand> bulkCommands = new HashMap<>();
-
-        //Send off all the get commands now so they process while we wait for the set commands to finish
-        for(LynxModule module : instance.modules){
-            LynxGetBulkInputDataCommand bulkCommand = new LynxGetBulkInputDataCommand(module);
-            try {
-                module.acquireNetworkTransmissionLock(bulkCommand);
-                module.sendCommand(bulkCommand);
-                bulkCommands.put(module, bulkCommand);
-            } catch (InterruptedException | LynxUnsupportedCommandException e) {
-                e.printStackTrace();
-            }
-            LynxStandardCommandV2 acquiredCommand = null;
-            for(LynxStandardCommandV2 command : instance.getCommands){
-                if(command.getModuleAddress() == module.getModuleAddress()){
-                    try {
-                        module.sendCommand(command);
-                    } catch (InterruptedException | LynxUnsupportedCommandException e) {
-                        e.printStackTrace();
-                    }
-                }
-            }
-            try {
-                module.releaseNetworkTransmissionLock(bulkCommand);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
+    protected static void onBulkRead(LynxGetBulkInputDataCommand command) throws InterruptedException, LynxUnsupportedCommandException {
+        if(instance.toBulkRead.size() == 0){
+            return;
         }
+        if(command == null){
+            instance.modules.get(0).getBulkData();
+            return;
+        }
+        instance.toBulkRead.removeIf(commandV2 -> (System.currentTimeMillis() - instance.lastReads.get(commandV2)) > 500);
+        command.getModule().acquireNetworkTransmissionLock(command);
+        for(LynxStandardCommandV2 commandV2 : instance.toBulkRead){
+            ((PhotonLynxModule)commandV2.getModule()).normalSend(commandV2);
+        }
+        ((PhotonLynxModule)command.getModule()).normalSend(command);
+        command.getModule().releaseNetworkTransmissionLock(command);
 
-        //Make sure to resend any command that was nacked
-        ArrayList<LynxStandardCommandV2> resendCommands = new ArrayList<>();
-        while(instance.sentCommands.size() > 0){
-            for(LynxStandardCommandV2 command : instance.sentCommands){
-                if(command.isResponded()){
-                    if(command.isNacked()){
-                        command.reset();
-                        resendCommands.add(command);
-                    }
-                    instance.sentCommands.remove(command);
+        boolean loop = true;
+        while(loop){
+            loop = false;
+            for(LynxStandardCommandV2 commandV2 : instance.toBulkRead){
+                if(!commandV2.isResponded()){
+                    loop = true;
                 }
             }
         }
-
-        for (LynxStandardCommandV2 command : resendCommands) {
-            instance.registerSend(command);
-        }
-
-        //Wait for everything to be responded to so that we can get all the data we need for the next loop
-        boolean end = false;
-        while(!end){
-            end = true;
-            for(LynxStandardCommandV2 command : instance.getCommands){
-                if(!command.isResponded()){
-                    end = false;
-                }
-            }
-        }
-
-        for(LynxStandardCommandV2 command : instance.getCommands){
-            command.reset();
-        }
-
-        //Finally grab the bulk data
-        for(LynxModule module : bulkCommands.keySet()){
-            while(!bulkCommands.get(module).isResponded());
-            synchronized (instance.bulkData) {
-                instance.bulkData.put(module.getModuleAddress(), new BulkData(bulkCommands.get(module).getResponse(), false));
-            }
-        }
-
-        //Prune the bulk requests that haven't been used for over a second
-        long now = System.currentTimeMillis();
-        instance.getCommands.removeIf(lynxStandardCommandV2 -> (now - instance.lastRequest.get(lynxStandardCommandV2)) > 1000);
     }
 }

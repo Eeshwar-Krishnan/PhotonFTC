@@ -2,12 +2,15 @@ package com.outoftheboxrobotics.photoncore;
 
 import com.outoftheboxrobotics.photoncore.Commands.LynxStandardCommandV2;
 import com.qualcomm.hardware.lynx.LynxModule;
+import com.qualcomm.hardware.lynx.LynxNackException;
 import com.qualcomm.hardware.lynx.LynxUnsupportedCommandException;
 import com.qualcomm.hardware.lynx.LynxUsbDevice;
+import com.qualcomm.hardware.lynx.commands.LynxDatagram;
 import com.qualcomm.hardware.lynx.commands.LynxMessage;
 import com.qualcomm.hardware.lynx.commands.LynxRespondable;
 import com.qualcomm.hardware.lynx.commands.core.*;
 import com.qualcomm.hardware.lynx.commands.standard.LynxAck;
+import com.qualcomm.hardware.lynx.commands.standard.LynxStandardCommand;
 
 import org.apache.commons.beanutils.PropertyUtils;
 import org.reflections.Reflections;
@@ -21,7 +24,7 @@ import static org.reflections.scanners.Scanners.SubTypes;
 public class PhotonLynxModule extends LynxModule {
     Set<Class<? extends LynxStandardCommandV2>> v2Classes;
 
-    public PhotonLynxModule(Object lynxUsbDevice, Object moduleAddress, Object isParent, Object isUserModule) {
+    public PhotonLynxModule(LynxUsbDevice lynxUsbDevice, int moduleAddress, boolean isParent, boolean isUserModule) {
         super(lynxUsbDevice, moduleAddress, isParent, isUserModule);
         Reflections reflection = new Reflections("com.outoftheboxrobotics.photoncore.Commands.V2");
         v2Classes = reflection.getSubTypesOf(LynxStandardCommandV2.class);
@@ -35,7 +38,10 @@ public class PhotonLynxModule extends LynxModule {
                 if(commandv2 == null){
                     super.sendCommand(command);
                 }else {
-                    PhotonCore.registerSend(commandv2);
+                    boolean sent = PhotonCore.registerSend(commandv2);
+                    if(!sent){
+                        super.sendCommand(command);
+                    }
                     if(command instanceof LynxRespondable) {
                         LynxAck ack = new LynxAck(this, false);
                         ((LynxRespondable)command).onAckReceived(ack);
@@ -44,21 +50,30 @@ public class PhotonLynxModule extends LynxModule {
             } catch (InstantiationException | IllegalAccessException | InvocationTargetException | NoSuchMethodException e) {
                 e.printStackTrace();
             }
-        }else{
-            try {
-                LynxStandardCommandV2 commandV2 = exchangeCommand(command);
-                if(commandV2 == null){
-                    super.sendCommand(command);
-                }else{
-                    LynxMessage message = PhotonCore.registerGet(commandV2);
-                    if(command instanceof LynxRespondable){
-                        ((LynxRespondable<?>) command).onResponseReceived(message);
+        }else if(isValidGetCommand(command)){
+            if(command instanceof LynxGetBulkInputDataCommand){
+                PhotonCore.onBulkRead((LynxGetBulkInputDataCommand)command);
+            }else{
+                try {
+                    LynxStandardCommandV2 commandv2 = exchangeCommand(command);
+                    if(commandv2 == null){
+                        super.sendCommand(command);
                     }
+                    boolean sent = PhotonCore.registerGet(commandv2, (LynxStandardCommand) command);
+                    if(!sent){
+                        super.sendCommand(command);
+                    }
+                } catch (InstantiationException | IllegalAccessException | InvocationTargetException | NoSuchMethodException | LynxNackException e) {
+                    e.printStackTrace();
                 }
-            } catch (InstantiationException | IllegalAccessException | InvocationTargetException | NoSuchMethodException e) {
-                e.printStackTrace();
             }
+        }else{
+            super.sendCommand(command);
         }
+    }
+
+    public void normalSend(LynxMessage command) throws LynxUnsupportedCommandException, InterruptedException {
+        super.sendCommand(command);
     }
 
     private boolean isSetCommand(LynxMessage command){
@@ -86,6 +101,12 @@ public class PhotonLynxModule extends LynxModule {
                 command instanceof LynxI2cWriteSingleByteCommand ||
                 command instanceof LynxI2cWriteReadMultipleBytesCommand ||
                 command instanceof LynxResetMotorEncoderCommand;
+    }
+
+    private boolean isValidGetCommand(LynxMessage command){
+        return (!isSetCommand(command)) &&
+                !(command instanceof LynxI2cReadStatusQueryCommand) &&
+                !(command instanceof LynxI2cWriteStatusQueryCommand);
     }
 
     private boolean isGetCommand(LynxMessage command){
