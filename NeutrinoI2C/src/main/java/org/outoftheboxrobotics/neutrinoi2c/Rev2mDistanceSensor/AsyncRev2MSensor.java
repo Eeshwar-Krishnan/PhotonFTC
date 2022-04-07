@@ -6,6 +6,7 @@ import com.qualcomm.ftccommon.FtcEventLoop;
 import com.qualcomm.hardware.lynx.LynxI2cDeviceSynch;
 import com.qualcomm.hardware.lynx.LynxModule;
 import com.qualcomm.hardware.lynx.LynxNackException;
+import com.qualcomm.hardware.lynx.Supplier;
 import com.qualcomm.hardware.lynx.commands.LynxCommand;
 import com.qualcomm.hardware.lynx.commands.core.LynxI2cReadStatusQueryCommand;
 import com.qualcomm.hardware.lynx.commands.core.LynxI2cReadStatusQueryResponse;
@@ -165,6 +166,9 @@ public class AsyncRev2MSensor implements OpModeManagerNotifier.Notifications, Ru
     }
 
     public double getDistance(DistanceUnit unit){
+
+
+
         hasNewData.set(false);
         double range = (double)this.range.get();
         if (unit == DistanceUnit.CM) {
@@ -207,68 +211,31 @@ public class AsyncRev2MSensor implements OpModeManagerNotifier.Notifications, Ru
             }
             //RobotLog.ii("2M Status", "Started Read");
 
-            //We can make an assumption at this point that there is new data available
-            //Since its been longer then the timing budget, so the sensor would have taken a measurement
-            //So lets just get it and ignore the check to see if the data is new
-            boolean successful = false;
-            try {
-                successful = module.acquireI2cLockWhile(() -> {//Acquire the i2c lock to write data
-                    LynxCommand<?> tx = new LynxI2cWriteReadMultipleBytesCommand(module, bus, address, RESULT_RANGE_STATUS + 10, 2);
-                    tx.send(); //Request to read 2 bytes starting at register 30
-                    //These two bytes are the range the sensor has last read
-                    return true;
-                });
-            } catch (InterruptedException | RobotCoreException | LynxNackException e) {
-                e.printStackTrace();
-            }
-
-            if(!successful){
-                continue;
-                //error from the hub, happens sometimes, just try again later
-            }
-
-            //RobotLog.ii("2M Status", "Acquired Lock");
-
-            boolean hasResponse = false;
-            while(!hasResponse) {
+            boolean readData = false;
+            AtomicBoolean sentReadRequest = new AtomicBoolean(false);
+            while(!readData){
                 try {
-                    hasResponse = module.acquireI2cLockWhile(() -> {
+                    readData = module.acquireI2cLockWhile(() -> {
+                        if(!sentReadRequest.get()) {
+                            LynxCommand<?> tx = new LynxI2cWriteReadMultipleBytesCommand(module, bus, address, RESULT_RANGE_STATUS + 10, 2);
+                            tx.send(); //Request to read 2 bytes starting at register 30
+                            //These two bytes are the range the sensor has last read
+                            sentReadRequest.set(true);
+                        }
                         LynxI2cReadStatusQueryCommand command = new LynxI2cReadStatusQueryCommand(module, bus, 2);
                         LynxI2cReadStatusQueryResponse response = command.sendReceive(); //Read the 2 bytes we asked for previously
                         range.set(TypeConversion.byteArrayToShort(response.getBytes()));
                         hasNewData.set(true);
-                        prevRun.set(System.currentTimeMillis()); //Timer starts the moment we read the data, we can guarantee that after
-                        //the timing budget window there is fresh data
-                        //After all, we are receiving the data after a ~5ms delay so the sensor should have plenty of time to read new data
-                        //RobotLog.ii("2M Status", "Read Data!");
-                        return true;
+                        prevRun.set(System.currentTimeMillis());
+                        return null;
                     });
                 } catch (InterruptedException | RobotCoreException e) {
                     e.printStackTrace();
                 } catch (LynxNackException e) {
-                    switch (e.getNack().getNackReasonCodeAsEnum())
-                    {
-                        case I2C_MASTER_BUSY: //This doesn't ever seem to get thrown by the lynx but
-                            //the sdk has it so I might as well have it?
-                            //I assume this is legacy from the MR controllers, but it could also be called by the hub in rare circumstances
-                        case I2C_OPERATION_IN_PROGRESS:
-                            //Data is still in flight, lets wait 5 ms then try again
-                            //The wait will make this slightly slower compared to SDK but is worth it
-                            //To allow user commands waiting for i2c/command lock to get it
-
-                            //TODO: There has got to be a more efficient way to determine that data is available
-                            //Possibly we could time the average response latency of the 2m and wait that amount
-                            //Although that would be difference from hub to hub and from chub to ehub etc
-                            //RobotLog.ii("2M Status", "NACK");
-                            try { Thread.sleep(5); } catch (InterruptedException ignored) { hasResponse = true;}
-                            continue;
-                        case I2C_NO_RESULTS_PENDING:
-                            //We definitely asked for data, so if it doesn't have anything something happened to our request
-                            //while in flight. We should just try again
-                        default:
-                            //Some error occurred, just break out of here and try again
-                            hasResponse = true;
-                            break;
+                    try {
+                        Thread.sleep(5);
+                    } catch (InterruptedException interruptedException) {
+                        interruptedException.printStackTrace();
                     }
                 }
             }

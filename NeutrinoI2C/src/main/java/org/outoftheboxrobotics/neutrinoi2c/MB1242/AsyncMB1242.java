@@ -191,59 +191,51 @@ public class AsyncMB1242 extends I2cDeviceSynchDevice<I2cDeviceSynch> implements
 
             deviceClient.write(TypeConversion.intToByteArray(0x51)); //Send ping signal
 
-            try {
-                module.acquireI2cLockWhile(() -> {
-                    LynxI2cReadMultipleBytesCommand command = new LynxI2cReadMultipleBytesCommand(module, bus, address, 2);
-                    command.send(); //Schedule a read right away to read from the distance register
-                    return true;
-                });
-            } catch (InterruptedException | RobotCoreException | LynxNackException e) {
-                e.printStackTrace();
-            }
-            boolean end = false;
-            while(!end && running.get()){
-                try {
-                    end = module.acquireI2cLockWhile(() -> {
-                        LynxI2cReadStatusQueryCommand command = new LynxI2cReadStatusQueryCommand(module, bus, 2);
-                        LynxI2cReadStatusQueryResponse response = command.sendReceive();
+            boolean readSuccess = false;
+            AtomicBoolean sentReadRequest = new AtomicBoolean(false);
 
-                        if (response.getBytes().length == 2) {
-                            //Ranging has completed
+            while(!readSuccess) {
+                final boolean[] waitingForNewData = {false};
+                try {
+                    readSuccess = module.acquireI2cLockWhile(() -> {
+                        if(!sentReadRequest.get()) {
+                            LynxI2cReadMultipleBytesCommand command = new LynxI2cReadMultipleBytesCommand(module, bus, address, 2);
+                            command.send();
+                            sentReadRequest.set(true);
+                        }
+
+                        LynxI2cReadStatusQueryCommand command2 = new LynxI2cReadStatusQueryCommand(module, bus, 2);
+                        LynxI2cReadStatusQueryResponse response = command2.sendReceive();
+
+                        if(response.getBytes().length == 0){
+                            waitingForNewData[0] = true;
+                            return false;
+                        }else{
                             rangeMM.set((int) DistanceUnit.MM.fromCm(TypeConversion.byteArrayToShort(response.getBytes())));
                             long now = System.currentTimeMillis();
                             timeTaken[0] = now - lastRun.get();
                             lastRun.set(System.currentTimeMillis());
                             return true;
-                        } else {
-                            //I2C NACK returned; ranging is still in progress
-                            LynxI2cReadMultipleBytesCommand command2 = new LynxI2cReadMultipleBytesCommand(module, bus, address, 2);
-                            command2.send();
-                            Thread.sleep(5);
-                            return false;
                         }
                     });
                 } catch (InterruptedException | RobotCoreException e) {
                     e.printStackTrace();
-                } catch(LynxNackException e){
-                    switch (e.getNack().getNackReasonCodeAsEnum()) {
-                        case I2C_MASTER_BUSY:               // TODO: REVIEW: is this ever actually returned in this situation?
-                        case I2C_OPERATION_IN_PROGRESS:
-                            // We used to sleep for 3ms while waiting for the result to avoid a "busy loop", but that
-                            // caused a serious performance hit over what we could get otherwise, at least on the CH.
-                            // Besides, we're not *truly* busy looping, we still end up waiting for the module's response
-                            // and what not.
-
-                            try { Thread.sleep(5); } catch (InterruptedException ignored) { Thread.currentThread().interrupt(); }
-                            continue;
-                        case I2C_NO_RESULTS_PENDING:
-                            // This is an internal error of some sort
-                            end = true;
-                            break;
-                        default:
-                            break;
+                } catch (LynxNackException e) {
+                    try {
+                        Thread.sleep(5);
+                    } catch (InterruptedException interruptedException) {
+                        interruptedException.printStackTrace();
+                    }
+                }
+                if(waitingForNewData[0]){
+                    try {
+                        Thread.sleep(10);
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
                     }
                 }
             }
+
             if(timeTaken[0] < minRunDelayMs.get()){
                 try {
                     //Make sure we aren't running faster then 20 ms per loop
