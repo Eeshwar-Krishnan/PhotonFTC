@@ -11,8 +11,8 @@ import com.qualcomm.robotcore.hardware.DcMotorEx;
 
 import org.firstinspires.ftc.robotcore.external.navigation.CurrentUnit;
 
-@TeleOp
-public class PhotonTest extends LinearOpMode {
+
+public class PhotonExample extends LinearOpMode {
     @Override
     public void runOpMode() throws InterruptedException {
         PhotonCore.addCacheIntent(new BulkReadCacheIntent(5, PhotonCore.CONTROL_HUB)); //Cache bulk data every 5 ms
