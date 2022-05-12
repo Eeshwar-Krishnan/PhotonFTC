@@ -32,12 +32,11 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 package com.outoftheboxrobotics.photoncore.Commands.V2;
 
-import com.outoftheboxrobotics.photoncore.Commands.LynxStandardCommandV2;
 import com.qualcomm.hardware.lynx.LynxModule;
-import com.qualcomm.hardware.lynx.LynxModuleIntf;
 import com.qualcomm.hardware.lynx.commands.LynxInterfaceResponse;
-import com.qualcomm.hardware.lynx.commands.core.LynxDekaInterfaceCommand;
 import com.qualcomm.hardware.lynx.commands.core.LynxGetBulkInputDataResponse;
+
+import com.outoftheboxrobotics.photoncore.Commands.LynxStandardCommandV2;
 
 /**
  * Created by bob on 2016-03-06.
@@ -58,7 +57,7 @@ public class LynxGetBulkInputDataCommand extends LynxStandardCommandV2<LynxGetBu
 
         @Override
         public int getCommandNumber() {
-            return 0;
+            return 4096;
         }
 
         //----------------------------------------------------------------------------------------------

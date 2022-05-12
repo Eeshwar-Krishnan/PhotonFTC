@@ -32,12 +32,12 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 package com.outoftheboxrobotics.photoncore.Commands.V2;
 
-import com.outoftheboxrobotics.photoncore.Commands.LynxStandardCommandV2;
 import com.qualcomm.hardware.lynx.LynxModule;
-import com.qualcomm.hardware.lynx.LynxModuleIntf;
 import com.qualcomm.hardware.lynx.commands.LynxDatagram;
 import com.qualcomm.hardware.lynx.commands.LynxInterfaceResponse;
 import com.qualcomm.hardware.lynx.commands.core.LynxGetADCResponse;
+
+import com.outoftheboxrobotics.photoncore.Commands.LynxStandardCommandV2;
 
 import java.nio.ByteBuffer;
 
@@ -98,7 +98,7 @@ public class LynxGetADCCommand extends LynxStandardCommandV2<LynxGetADCResponse>
 
     @Override
     public int getCommandNumber() {
-        return 0;
+        return 4103;
     }
 
     public LynxGetADCCommand(LynxModule module, Channel channel, Mode mode) {
