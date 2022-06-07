@@ -1,5 +1,6 @@
 package com.outoftheboxrobotics.photoncore.Testing;
 
+import com.outoftheboxrobotics.photoncore.Caching.BulkReadCacheIntent;
 import com.outoftheboxrobotics.photoncore.Caching.MotorCurrentCacheIntent;
 import com.outoftheboxrobotics.photoncore.PhotonCore;
 import com.qualcomm.hardware.lynx.LynxModule;
@@ -13,7 +14,7 @@ import org.firstinspires.ftc.robotcore.external.navigation.CurrentUnit;
 public class PhotonExample extends LinearOpMode {
     @Override
     public void runOpMode() throws InterruptedException {
-        //PhotonCore.addCacheIntent(new BulkReadCacheIntent(5, PhotonCore.CONTROL_HUB)); //Cache bulk data every 5 ms
+        PhotonCore.addCacheIntent(new BulkReadCacheIntent(5, PhotonCore.CONTROL_HUB)); //Cache bulk data every 5 ms
         PhotonCore.addCacheIntent(new MotorCurrentCacheIntent(30, PhotonCore.CONTROL_HUB, 0)); //Cache motor 0 current every 30 ms
         PhotonCore.addCacheIntent(new MotorCurrentCacheIntent(30, PhotonCore.CONTROL_HUB, 1)); //Cache motor 1 current every 30 ms
 
