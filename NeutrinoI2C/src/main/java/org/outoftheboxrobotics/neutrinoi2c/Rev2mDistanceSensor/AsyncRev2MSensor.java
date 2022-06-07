@@ -227,7 +227,7 @@ public class AsyncRev2MSensor implements OpModeManagerNotifier.Notifications, Ru
                         range.set(TypeConversion.byteArrayToShort(response.getBytes()));
                         hasNewData.set(true);
                         prevRun.set(System.currentTimeMillis());
-                        return null;
+                        return true;
                     });
                 } catch (InterruptedException | RobotCoreException e) {
                     e.printStackTrace();
