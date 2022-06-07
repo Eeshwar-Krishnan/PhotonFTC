@@ -12,13 +12,14 @@ Projects at a glance:
       - Speeding up, optimizing, and expanding stock I2C drivers including
            - Rev 2M Distance Sensor (supports asynchronous non-blocking reading and different accuracy modes)
            - MB1242 Ultrasonic Sensor (Asynchronous sensing and auto-ping)
- - **PhotonCore - In Development: Not available yet (check dev branch to see progress)**
+ - **PhotonCore**
      - Speeding up and paralleling the FTC control system for faster loop times
 
 **NOTE**: There is no cross dependency in PhotonFTC. That means you can install one project individually without the others, and you do NOT have to download everything if you do not want to.
 
 ## Documentation:
  - [Neutrino Overview](https://github.com/Eeshwar-Krishnan/PhotonFTC/blob/main/doc/neutrino_overview.md)
+ - [PhotonCore Overview](https://github.com/Eeshwar-Krishnan/PhotonFTC/blob/main/doc/photon_overview.md)
 
 ## Installation instructions :
 Installation is simple. Just go to build.gradle in your Teamcode module and add the following under repositories
@@ -31,7 +32,12 @@ Then, depending on which project you want to install, add the following under de
 
 **NeutrinoI2C**:
 ```
-implementation 'com.github.Eeshwar-Krishnan.PhotonFTC:NeutrinoI2C:v1.0.5'
+implementation 'com.github.Eeshwar-Krishnan.PhotonFTC:NeutrinoI2C:v1.1.0'
+```
+
+**PhotonCore**
+```
+implementation 'com.github.Eeshwar-Krishnan.PhotonFTC:PhotonCore:v1.1.0'
 ```
 
 Then run a gradle sync, and everything should download!
