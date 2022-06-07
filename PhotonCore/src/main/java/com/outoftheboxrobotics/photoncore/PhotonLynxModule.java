@@ -68,7 +68,7 @@ public class PhotonLynxModule extends LynxModule {
 
     @Override
     public void releaseNetworkTransmissionLock(LynxMessage message) throws InterruptedException {
-        if(PhotonCore.instance.enabled.get() || message instanceof LynxStandardCommandV2){
+        if(!PhotonCore.instance.enabled.get() || message instanceof LynxStandardCommandV2){
             super.releaseNetworkTransmissionLock(message);
             return;
         }
