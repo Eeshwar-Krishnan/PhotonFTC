@@ -32,12 +32,12 @@ Then, depending on which project you want to install, add the following under de
 
 **NeutrinoI2C**:
 ```
-implementation 'com.github.Eeshwar-Krishnan.PhotonFTC:NeutrinoI2C:v1.1.0'
+implementation 'com.github.Eeshwar-Krishnan.PhotonFTC:NeutrinoI2C:v1.1.1'
 ```
 
 **PhotonCore**
 ```
-implementation 'com.github.Eeshwar-Krishnan.PhotonFTC:PhotonCore:v1.1.0'
+implementation 'com.github.Eeshwar-Krishnan.PhotonFTC:PhotonCore:v1.1.1'
 ```
 
 Then run a gradle sync, and everything should download!
