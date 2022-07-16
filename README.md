@@ -3,6 +3,8 @@
 
 NOTE: This code will ONLY work on the REV Robotics Expansion Hub or REV Robotics Control Hub. No Modern Robotics system is supported!
 
+***WARNING: THIS BRANCH IS DEVELOPMENT CODE AND MAY BE UNSTABLE***
+
 This project is an initiative to push the FIRST api to its absolute limits, and to **give access to functionality and methods not normally exposed to the user**
 
 Projects at a glance:
@@ -12,7 +14,7 @@ Projects at a glance:
      - Speeding up and paralleling the FTC control system for faster loop times
 
 ## Documentation:
- - [PhotonCore Overview](https://github.com/Eeshwar-Krishnan/PhotonFTC/blob/main/doc/photon_overview.md)
+ - [PhotonCore Overview](https://github.com/Eeshwar-Krishnan/PhotonFTC/blob/dev/doc/photon_overview.md)
 
 ## Installation instructions :
 Installation is simple. Just go to build.gradle in your Teamcode module and add the following under repositories
@@ -23,9 +25,8 @@ maven { url 'https://jitpack.io' }
 
 Then add the following under dependencies
 
-**PhotonCore**
 ```
-implementation 'com.github.Eeshwar-Krishnan.PhotonFTC:PhotonCore:v1.1.1'
+implementation 'com.github.Eeshwar-Krishnan:PhotonFTC:dev-SNAPSHOT'
 ```
 
 Then run a gradle sync, and everything should download!
