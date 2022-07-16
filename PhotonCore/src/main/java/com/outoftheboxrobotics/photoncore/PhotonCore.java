@@ -2,7 +2,6 @@ package com.outoftheboxrobotics.photoncore;
 
 import android.content.Context;
 
-
 import com.outoftheboxrobotics.photoncore.Neutrino.Rev2MSensor.Rev2mDistanceSensorEx;
 import com.outoftheboxrobotics.photoncore.Neutrino.RevColorSensor.RevColorSensorV3Ex;
 import com.qualcomm.ftccommon.FtcEventLoop;
@@ -16,8 +15,6 @@ import com.qualcomm.hardware.lynx.commands.LynxCommand;
 import com.qualcomm.hardware.lynx.commands.LynxDatagram;
 import com.qualcomm.hardware.lynx.commands.LynxMessage;
 import com.qualcomm.hardware.lynx.commands.LynxRespondable;
-import com.qualcomm.hardware.lynx.commands.core.LynxI2cReadStatusQueryCommand;
-import com.qualcomm.hardware.lynx.commands.core.LynxI2cWriteReadMultipleBytesCommand;
 import com.qualcomm.hardware.lynx.commands.core.LynxSetMotorConstantPowerCommand;
 import com.qualcomm.hardware.lynx.commands.core.LynxSetServoPulseWidthCommand;
 import com.qualcomm.hardware.lynx.commands.standard.LynxAck;
@@ -93,6 +90,9 @@ public class PhotonCore implements Runnable, OpModeManagerNotifier.Notifications
         instance.enabled.set(true);
         if(CONTROL_HUB.getBulkCachingMode() == LynxModule.BulkCachingMode.OFF){
             CONTROL_HUB.setBulkCachingMode(LynxModule.BulkCachingMode.AUTO);
+        }
+        if(EXPANSION_HUB != null && EXPANSION_HUB.getBulkCachingMode() == LynxModule.BulkCachingMode.OFF){
+            EXPANSION_HUB.setBulkCachingMode(LynxModule.BulkCachingMode.AUTO);
         }
     }
 
@@ -287,7 +287,6 @@ public class PhotonCore implements Runnable, OpModeManagerNotifier.Notifications
                             device2 = (I2cDeviceSynchSimple) ReflectionUtils.getField(device2.getClass(), "i2cDeviceSynchSimple").get(device2);
                         }
                         setLynxObject(device2, replacements);
-                        RobotLog.e("" + (device2 instanceof LynxI2cDeviceSynch));
                     } catch (IllegalAccessException e) {
                         e.printStackTrace();
                     }
