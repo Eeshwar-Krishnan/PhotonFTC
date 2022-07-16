@@ -16,31 +16,22 @@ Its very simple, just put
 PhotonCore.enable();
 ```
 
-at the beginning of your opmode to turn on write optimizations. In addition, you can tell Photon to cache certain data behind the scenes (like motor current data and bulk read data) in order to read them with minimal slowdowns
+at the beginning of your opmode to turn on write optimizations.
 
-In order to do this, simply run
-
-```java
-PhotonCore.addCacheIntent(/*Cache Intent Here*/);
-```
-
-Currently, the following cache intents are supported
-
-```java
-BulkReadCacheIntent(runDelayMs, hub);
-MotorCurrentCacheIntent(runDelayMs, hub, motorPort);
-```
-
-All cache intent constructors first take a value representing the minimum amount of time that should be waited between data retrieval attempts. The bigger this number, the slower it will update, but the less background resources it will use.
-It is recommended to use 5ms delays as a minimum, and using longer delays, such as 30-50ms, for data that doesn't need to be rapidly updated (motor current, etc).NeutrinoI2C
-
-The second value in all constructors is the hub to run on, PhotonCore has the variables
+PhotonCore also has the variables
 
 ```java
 PhotonCore.CONTROL_HUB
 PhotonCore.EXPANSION_HUB
 ```
 
-to easily get the hubs you can run on. Make sure to ONLY use hubs that are physically connected to avoid a crash!
+to make finding LynxModule objects either (NOTE: EXPANSION_HUB will be null if run with just one hub)
 
-[Example Opmode](https://github.com/Eeshwar-Krishnan/PhotonFTC/blob/main/PhotonCore/src/main/java/com/outoftheboxrobotics/photoncore/Testing/PhotonExample.java)
+### Experimental
+
+There are a few experimental variables that you can tweak.
+**NOTE: Experimental variables are EXPERIMENTAL and may result in degraded or unstable behaviour if modified**
+
+**setSinglethreadedOptimized**: set to TRUE if only using one thread, set to FALSE if you plan on accessing hardware from multiple threads. Using multiple threads is NOT recommended. Default: TRUE
+
+**setMaximumParallelCommands**: sets the maximum number of parallel commands allowed at once. Input must be an integer between 1 and 9 inclusive. Lower numbers can be more stable when multithreading hardware. Default: 8
