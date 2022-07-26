@@ -210,9 +210,6 @@ public class PhotonCore implements Runnable, OpModeManagerNotifier.Notifications
 
         HardwareMap map = opMode.hardwareMap;
 
-        CONTROL_HUB = null;
-        EXPANSION_HUB = null;
-
         boolean replacedPrev = false;
         boolean hasChub = false;
         for(LynxModule module : map.getAll(LynxModule.class)){
@@ -233,6 +230,9 @@ public class PhotonCore implements Runnable, OpModeManagerNotifier.Notifications
             for(String s : toRemove.keySet()){
                 map.remove(s, toRemove.get(s));
             }
+        }else{
+            CONTROL_HUB = null;
+            EXPANSION_HUB = null;
         }
 
         instance.modules = map.getAll(LynxModule.class);
