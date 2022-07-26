@@ -25,7 +25,10 @@ PhotonCore.CONTROL_HUB
 PhotonCore.EXPANSION_HUB
 ```
 
-to make finding LynxModule objects either (NOTE: EXPANSION_HUB will be null if run with just one hub)
+to make finding LynxModule objects either. EXPANSION_HUB will be null if run with just one hub. If used with android phones, CONTROL_HUB will be the hub connected to the phone, and EXPANSION_HUB will be the one connected over RS485.
+If used with two expansion hubs both connected over USB, the CONTROL_HUB and EXPANSION_HUB variables will be arbitrarily assigned, and may not be the same from run to run.
+
+NOTE: At this time, hubs connected via RS485 cannot be parallelized by photon, however connecting the expansion hub to the control hub via USB will work. It is not recommended to connect two expansion hubs via usb to an android phone.
 
 ### Experimental
 

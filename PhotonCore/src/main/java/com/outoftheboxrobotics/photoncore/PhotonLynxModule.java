@@ -42,7 +42,6 @@ public class PhotonLynxModule extends LynxModule {
                 boolean success = PhotonCore.registerSend((LynxCommand) command);
                 if (!success) {
                     super.sendCommand(command);
-                    ((LynxCommand) command).onAckReceived(new LynxAck(command.getModule(), false));
                 }
                 return;
             }
