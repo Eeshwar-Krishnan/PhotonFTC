@@ -3,23 +3,18 @@
 
 NOTE: This code will ONLY work on the REV Robotics Expansion Hub or REV Robotics Control Hub. No Modern Robotics system is supported!
 
-This project is an initiative to push the FIRST api to its absolute limits, and to **give access to functionality and methods not normally exposed to the user**
+***WARNING: THIS BRANCH IS DEVELOPMENT CODE AND MAY BE UNSTABLE***
 
-PhotonFTC is split up into different projects depending on what the project is attempting to do
+This project is an initiative to push the FIRST api to its absolute limits, and to **give access to functionality and methods not normally exposed to the user**
 
 Projects at a glance:
  - **NeutrinoI2C**
-      - Speeding up, optimizing, and expanding stock I2C drivers including
-           - Rev 2M Distance Sensor (supports asynchronous non-blocking reading and different accuracy modes)
-           - MB1242 Ultrasonic Sensor (Asynchronous sensing and auto-ping)
+      - Deprecated, merged into PhotonCore
  - **PhotonCore**
      - Speeding up and paralleling the FTC control system for faster loop times
 
-**NOTE**: There is no cross dependency in PhotonFTC. That means you can install one project individually without the others, and you do NOT have to download everything if you do not want to.
-
 ## Documentation:
- - [Neutrino Overview](https://github.com/Eeshwar-Krishnan/PhotonFTC/blob/main/doc/neutrino_overview.md)
- - [PhotonCore Overview](https://github.com/Eeshwar-Krishnan/PhotonFTC/blob/main/doc/photon_overview.md)
+ - [PhotonCore Overview](https://github.com/Eeshwar-Krishnan/PhotonFTC/blob/dev/doc/photon_overview.md)
 
 ## Installation instructions :
 Installation is simple. Just go to build.gradle in your Teamcode module and add the following under repositories
@@ -28,16 +23,10 @@ Installation is simple. Just go to build.gradle in your Teamcode module and add 
 maven { url 'https://jitpack.io' }
 ```
 
-Then, depending on which project you want to install, add the following under dependencies
+Then add the following under dependencies
 
-**NeutrinoI2C**:
 ```
-implementation 'com.github.Eeshwar-Krishnan.PhotonFTC:NeutrinoI2C:v1.1.0'
-```
-
-**PhotonCore**
-```
-implementation 'com.github.Eeshwar-Krishnan.PhotonFTC:PhotonCore:v1.1.0'
+implementation 'com.github.Eeshwar-Krishnan:PhotonFTC:dev-SNAPSHOT'
 ```
 
 Then run a gradle sync, and everything should download!
