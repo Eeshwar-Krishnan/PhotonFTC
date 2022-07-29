@@ -35,6 +35,6 @@ NOTE: At this time, hubs connected via RS485 cannot be parallelized by photon, h
 There are a few experimental variables that you can tweak.
 **NOTE: Experimental variables are EXPERIMENTAL and may result in degraded or unstable behaviour if modified**
 
-**setSinglethreadedOptimized**: set to TRUE if only using one thread, set to FALSE if you plan on accessing hardware from multiple threads. Using multiple threads is NOT recommended. Default: TRUE
+**setSinglethreadedOptimized**: set to TRUE if only using one thread, set to FALSE if you plan on accessing hardware from multiple threads. Using multiple threads is NOT recommended as it may cause instibility. Default: TRUE
 
-**setMaximumParallelCommands**: sets the maximum number of parallel commands allowed at once. Input must be an integer between 1 and 9 inclusive. Lower numbers can be more stable when multithreading hardware. Default: 8
+**setMaximumParallelCommands**: sets the maximum number of parallel commands allowed at once. Input must be an integer greater then 1. Lower numbers can be more stable when multithreading hardware, **numbers greater then 8 may cause instability and crashes**. Default: 4
