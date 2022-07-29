@@ -343,15 +343,13 @@ public class PhotonCore implements Runnable, OpModeManagerNotifier.Notifications
                         }
                         setLynxObject(device2, replacements);
                         RobotLog.e("" + (device2 instanceof LynxI2cDeviceSynch));
-                    } catch (IllegalAccessException e) {
-                        e.printStackTrace();
+                    } catch (Exception ignored) {
                     }
                 }else if (device instanceof I2cDeviceSynchSimple){
                     try {
                         I2cDeviceSynchSimple device2 = (I2cDeviceSynchSimple) ReflectionUtils.getField(device.getClass(), "deviceClient").get(device);
                         setLynxObject(device2, replacements);
-                    } catch (IllegalAccessException e) {
-                        e.printStackTrace();
+                    } catch (Exception ignored) {
                     }
                 }else {
                     setLynxObject(device, replacements);
