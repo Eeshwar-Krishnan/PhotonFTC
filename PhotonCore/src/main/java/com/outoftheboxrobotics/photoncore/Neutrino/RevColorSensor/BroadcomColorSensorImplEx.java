@@ -33,6 +33,8 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 package com.outoftheboxrobotics.photoncore.Neutrino.RevColorSensor;
 
 import android.graphics.Color;
+import androidx.annotation.ColorInt;
+import androidx.annotation.NonNull;
 
 import com.qualcomm.hardware.broadcom.BroadcomColorSensor;
 import com.qualcomm.hardware.lynx.LynxI2cDeviceSynch;
@@ -72,7 +74,7 @@ public abstract class BroadcomColorSensorImplEx extends I2cDeviceSynchDeviceWith
     // Construction
     //----------------------------------------------------------------------------------------------
 
-    protected BroadcomColorSensorImplEx(BroadcomColorSensor.Parameters params,
+    protected BroadcomColorSensorImplEx(Parameters params,
                                         I2cDeviceSynchSimple deviceClient,
                                         boolean isOwned)
     {
@@ -96,7 +98,7 @@ public abstract class BroadcomColorSensorImplEx extends I2cDeviceSynchDeviceWith
     //----------------------------------------------------------------------------------------------
 
     @Override
-    protected synchronized boolean internalInitialize(Parameters parameters)
+    protected synchronized boolean internalInitialize(@NonNull Parameters parameters)
     {
         RobotLog.vv(TAG, "internalInitialize()...");
         try {
@@ -290,7 +292,7 @@ public abstract class BroadcomColorSensorImplEx extends I2cDeviceSynchDeviceWith
     public synchronized int alpha() { updateColors(); return this.alpha; }
 
     @Override
-    public synchronized int argb() { return getNormalizedColors().toColor(); }
+    public synchronized @ColorInt int argb() { return getNormalizedColors().toColor(); }
 
     @Override
     public void setGain(float newGain) { this.softwareGain = newGain; }
