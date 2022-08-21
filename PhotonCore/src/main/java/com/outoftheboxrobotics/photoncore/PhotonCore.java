@@ -52,21 +52,6 @@ import java.util.concurrent.Semaphore;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
-/**
- * Listen
- * I know why you are looking at this class
- * you want to know how it works
- * all i'm saying is
- * i don't know how this class works
- * I'm low key surprised it works as well as it did
- * its a mess
- * just give up tbh and dm me on discord i'll give you the tl;dr
- *
- * Also, if you do read this and fully understand it
- * and somewhat feel the urge to open a PR
- * take this https://genderdysphoria.fyi/
- * you are going to need it (/half joking)
- */
 public class PhotonCore implements Runnable, OpModeManagerNotifier.Notifications {
     protected static final PhotonCore instance = new PhotonCore();
     protected AtomicBoolean enabled, threadEnabled;
@@ -479,7 +464,7 @@ public class PhotonCore implements Runnable, OpModeManagerNotifier.Notifications
                         (Boolean)ReflectionUtils.getField(module.getClass(), "isParent").get(module),
                         (Boolean)ReflectionUtils.getField(module.getClass(), "isUserModule").get(module)
                 );
-                RobotLog.ee("PhotonCoreLynxNames", s);
+                //RobotLog.ee("PhotonCoreLynxNames", s);
                 ReflectionUtils.deepCopy(module, photonLynxModule);
                 map.remove(s, module);
                 map.put(s, photonLynxModule);
@@ -562,7 +547,7 @@ public class PhotonCore implements Runnable, OpModeManagerNotifier.Notifications
         HashMap<String, HardwareDevice> replacedNeutrino = new HashMap<>(), removedNeutrino = new HashMap<>();
         for(HardwareDevice device : map.getAll(HardwareDevice.class)){
             if(!(device instanceof LynxModule)){
-                RobotLog.i(map.getNamesOf(device).toArray()[0].toString());
+                //RobotLog.i(map.getNamesOf(device).toArray()[0].toString());
                 if(device instanceof I2cDeviceSynchDevice){
                     try {
                         I2cDeviceSynchSimple device2 = (I2cDeviceSynchSimple) ReflectionUtils.getField(device.getClass(), "deviceClient").get(device);
@@ -570,7 +555,7 @@ public class PhotonCore implements Runnable, OpModeManagerNotifier.Notifications
                             device2 = (I2cDeviceSynchSimple) ReflectionUtils.getField(device2.getClass(), "i2cDeviceSynchSimple").get(device2);
                         }
                         setLynxObject(device2, replacements);
-                        RobotLog.e("" + (device2 instanceof LynxI2cDeviceSynch));
+                        //RobotLog.e("" + (device2 instanceof LynxI2cDeviceSynch));
                     } catch (Exception ignored) {
                     }
                 }else if (device instanceof I2cDeviceSynchSimple){
@@ -614,7 +599,7 @@ public class PhotonCore implements Runnable, OpModeManagerNotifier.Notifications
         if(!(thisThread == null) && thisThread.isAlive()){
             thisThread.interrupt();
         }
-        RobotLog.i("Enabling Thread");
+        //RobotLog.i("Enabling Thread");
         thisThread = new Thread(this);
         threadEnabled.set(true);
         thisThread.start();
