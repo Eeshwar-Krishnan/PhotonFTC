@@ -18,7 +18,7 @@ Projects at a glance:
 Installation is simple. Just go to build.gradle in your Teamcode module and add the following under repositories
 
 ```
-maven { url 'https://jitpack.io' }
+maven { url = 'https://jitpack.io' }
 ```
 
 Then add the following under dependencies
