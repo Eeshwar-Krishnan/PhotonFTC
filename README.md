@@ -7,7 +7,7 @@ This project is an initiative to push the FIRST api to its absolute limits, and 
 
 Projects at a glance:
  - **NeutrinoI2C**
-      - Deprecated, merged into PhotonCore
+      - Speeding up I2C Sensors. Deprecated, merged into PhotonCore
  - **PhotonCore**
      - Speeding up and paralleling the FTC control system for faster loop times
 
