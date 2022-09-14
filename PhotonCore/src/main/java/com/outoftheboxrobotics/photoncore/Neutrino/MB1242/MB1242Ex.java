@@ -20,6 +20,7 @@ import com.qualcomm.hardware.lynx.commands.core.LynxI2cReadStatusQueryResponse;
 import com.qualcomm.hardware.lynx.commands.core.LynxI2cWriteReadMultipleBytesCommand;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.eventloop.opmode.OpModeManager;
+import com.qualcomm.robotcore.eventloop.opmode.OpModeManagerImpl;
 import com.qualcomm.robotcore.eventloop.opmode.OpModeManagerNotifier;
 import com.qualcomm.robotcore.exception.RobotCoreException;
 import com.qualcomm.robotcore.hardware.DistanceSensor;
@@ -41,7 +42,6 @@ import com.qualcomm.robotcore.util.TypeConversion;
 
 import org.firstinspires.ftc.ftccommon.external.OnCreateEventLoop;
 import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
-import org.firstinspires.ftc.robotcore.internal.opmode.OpModeManagerImpl;
 
 import java.lang.reflect.Field;
 import java.util.ArrayList;
