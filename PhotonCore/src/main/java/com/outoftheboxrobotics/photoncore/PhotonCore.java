@@ -356,20 +356,24 @@ public class PhotonCore implements Runnable, OpModeManagerNotifier.Notifications
                 }
                 if(device instanceof Rev2mDistanceSensor){
                     I2cDeviceSynch tmp = null;
+                    boolean owned = false;
                     try {
                         tmp = (I2cDeviceSynch) ReflectionUtils.getField(device.getClass(), "deviceClient").get(device);
+                        owned = (boolean) ReflectionUtils.getField(device.getClass(), "deviceClientIsOwned").get(device);
                     } catch (IllegalAccessException e) {
                         e.printStackTrace();
                     }
-                    Rev2mDistanceSensorEx vl53L0XEx = new Rev2mDistanceSensorEx(tmp);
+                    Rev2mDistanceSensorEx vl53L0XEx = new Rev2mDistanceSensorEx(tmp, owned);
                     replacedNeutrino.put((String) map.getNamesOf(device).toArray()[0], vl53L0XEx);
                     removedNeutrino.put((String) map.getNamesOf(device).toArray()[0], device);
                 }
                 if(device instanceof RevColorSensorV3){
                     RevColorSensorV3Ex revColorSensorV3Ex;
+                    boolean owned = false;
                     try {
                         I2cDeviceSynchSimple tmp = (I2cDeviceSynchSimple) ReflectionUtils.getField(device.getClass(), "deviceClient").get(device);
-                        revColorSensorV3Ex = new RevColorSensorV3Ex(tmp);
+                        owned = (boolean) ReflectionUtils.getField(device.getClass(), "deviceClientIsOwned").get(device);
+                        revColorSensorV3Ex = new RevColorSensorV3Ex(tmp, owned);
                         replacedNeutrino.put((String) map.getNamesOf(device).toArray()[0], revColorSensorV3Ex);
                         removedNeutrino.put((String) map.getNamesOf(device).toArray()[0], device);
                     } catch (IllegalAccessException e) {

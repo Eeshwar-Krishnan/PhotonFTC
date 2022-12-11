@@ -18,8 +18,8 @@ public class Rev2mDistanceSensorEx extends Rev2mDistanceSensor {
     private long lastRead = 0;
     private int rangeCache;
 
-    public Rev2mDistanceSensorEx(I2cDeviceSynch deviceClient) {
-        super(deviceClient);
+    public Rev2mDistanceSensorEx(I2cDeviceSynch deviceClient, boolean deviceClientIsOwned) {
+        super(deviceClient, deviceClientIsOwned);
         if(deviceClient instanceof LynxI2cDeviceSynch){
             ((LynxI2cDeviceSynch) deviceClient).setBusSpeed(LynxI2cDeviceSynch.BusSpeed.FAST_400K);
         }
@@ -32,6 +32,20 @@ public class Rev2mDistanceSensorEx extends Rev2mDistanceSensor {
         }
         // assumptions: Linearity Corrective Gain is 1000 (default);
         // fractional ranging is not enabled
+
+        /**
+         * For reasons known only to the almighty and someone at tech team probably
+         * this method normally blocks until new data is available
+         * which limits your teamcode to like. 50 hz.
+         * took me 2 years to figure that one out
+         * why didn't they just cache the data? we will never know
+         * (and for the tech team member who talked to me and said
+         * we don't cache things thats why, you do in the RevColourSensorV3 :P)
+         *
+         * UPDATE:
+         * I am 99% sure this whole file was literally taken from a c++ impl
+         * of the vl53l0x. Explains a lot
+         */
 
         if(System.currentTimeMillis() - lastRead > (measurement_timing_budget_us / 1000.0)) {
             byte[] readBytes = deviceClient.read(RESULT_RANGE_STATUS.bVal + 10, 2);
