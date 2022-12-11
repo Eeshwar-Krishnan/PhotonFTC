@@ -18,8 +18,8 @@ public class Rev2mDistanceSensorEx extends Rev2mDistanceSensor {
     private long lastRead = 0;
     private int rangeCache;
 
-    public Rev2mDistanceSensorEx(I2cDeviceSynch deviceClient) {
-        super(deviceClient);
+    public Rev2mDistanceSensorEx(I2cDeviceSynch deviceClient, boolean owned) {
+        super(deviceClient, owned);
         if(deviceClient instanceof LynxI2cDeviceSynch){
             ((LynxI2cDeviceSynch) deviceClient).setBusSpeed(LynxI2cDeviceSynch.BusSpeed.FAST_400K);
         }

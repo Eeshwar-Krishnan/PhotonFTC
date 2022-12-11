@@ -61,9 +61,9 @@ public class RevColorSensorV3Ex extends RevColorSensorV3
     long lastRead = 0, measurementDelay = 100;
     int red = 0, green = 0, blue = 0, alpha = 0;
 
-    public RevColorSensorV3Ex(I2cDeviceSynchSimple deviceClient)
+    public RevColorSensorV3Ex(I2cDeviceSynchSimple deviceClient, boolean owned)
     {
-        super(deviceClient);
+        super(deviceClient, owned);
     }
 
     @Override
