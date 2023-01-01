@@ -112,6 +112,7 @@ public class MB1242Ex extends I2cDeviceSynchDevice<I2cDeviceSynch> implements Di
                 byte[] data = pollForReadResult(2);
 
                 while(data.length == 0){
+                    tx = new LynxI2cReadMultipleBytesCommand(module, bus, address, 2);
                     try {
                         tx.send();
                     } catch (InterruptedException e) {
