@@ -94,7 +94,7 @@ public class PhotonCore implements Runnable, OpModeManagerNotifier.Notifications
 
     public static void enable(){
         instance.enabled.set(true);
-        if(CONTROL_HUB.getBulkCachingMode() == LynxModule.BulkCachingMode.OFF){
+        if(CONTROL_HUB != null && CONTROL_HUB.getBulkCachingMode() == LynxModule.BulkCachingMode.OFF){
             CONTROL_HUB.setBulkCachingMode(LynxModule.BulkCachingMode.AUTO);
         }
         if(EXPANSION_HUB != null && EXPANSION_HUB.getBulkCachingMode() == LynxModule.BulkCachingMode.OFF){
