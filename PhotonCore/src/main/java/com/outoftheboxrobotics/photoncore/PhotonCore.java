@@ -2,49 +2,20 @@ package com.outoftheboxrobotics.photoncore;
 
 import android.content.Context;
 
-
-import com.outoftheboxrobotics.photoncore.Neutrino.Rev2MSensor.Rev2mDistanceSensorEx;
-import com.outoftheboxrobotics.photoncore.Neutrino.RevColorSensor.RevColorSensorV3Ex;
 import com.qualcomm.ftccommon.FtcEventLoop;
-import com.qualcomm.hardware.lynx.LynxI2cDeviceSynch;
 import com.qualcomm.hardware.lynx.LynxModule;
-import com.qualcomm.hardware.lynx.LynxUnsupportedCommandException;
-import com.qualcomm.hardware.lynx.LynxUsbDevice;
-import com.qualcomm.hardware.lynx.LynxUsbDeviceDelegate;
-import com.qualcomm.hardware.lynx.LynxUsbDeviceImpl;
-import com.qualcomm.hardware.lynx.commands.LynxCommand;
-import com.qualcomm.hardware.lynx.commands.LynxDatagram;
-import com.qualcomm.hardware.lynx.commands.LynxMessage;
 import com.qualcomm.hardware.lynx.commands.LynxRespondable;
-import com.qualcomm.hardware.lynx.commands.core.LynxI2cReadStatusQueryCommand;
-import com.qualcomm.hardware.lynx.commands.core.LynxI2cWriteReadMultipleBytesCommand;
-import com.qualcomm.hardware.lynx.commands.core.LynxSetMotorConstantPowerCommand;
-import com.qualcomm.hardware.lynx.commands.core.LynxSetServoPulseWidthCommand;
-import com.qualcomm.hardware.lynx.commands.standard.LynxAck;
-import com.qualcomm.hardware.rev.Rev2mDistanceSensor;
-import com.qualcomm.hardware.rev.RevColorSensorV3;
+import com.qualcomm.hardware.lynx.commands.LynxResponse;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
-import com.qualcomm.robotcore.eventloop.opmode.OpModeManager;
 import com.qualcomm.robotcore.eventloop.opmode.OpModeManagerImpl;
 import com.qualcomm.robotcore.eventloop.opmode.OpModeManagerNotifier;
-import com.qualcomm.robotcore.exception.RobotCoreException;
-import com.qualcomm.robotcore.hardware.HardwareDevice;
-import com.qualcomm.robotcore.hardware.HardwareMap;
-import com.qualcomm.robotcore.hardware.I2cDeviceSynch;
-import com.qualcomm.robotcore.hardware.I2cDeviceSynchDevice;
-import com.qualcomm.robotcore.hardware.I2cDeviceSynchSimple;
-import com.qualcomm.robotcore.hardware.configuration.LynxConstants;
 import com.qualcomm.robotcore.hardware.usb.RobotUsbDevice;
-import com.qualcomm.robotcore.util.RobotLog;
 
 import org.firstinspires.ftc.ftccommon.external.OnCreateEventLoop;
-import org.firstinspires.ftc.robotcore.internal.usb.exception.RobotUsbException;
 
-import java.lang.reflect.Field;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -52,16 +23,7 @@ public class PhotonCore implements Runnable, OpModeManagerNotifier.Notifications
     protected static final PhotonCore instance = new PhotonCore();
     protected AtomicBoolean enabled, threadEnabled;
 
-    private List<LynxModule> modules;
-    private Thread thisThread = null;
-    private Object syncLock;
-
-    private final Object messageSync = new Object();
-
-    private RobotUsbDevice robotUsbDevice;
-    private HashMap<LynxModule, RobotUsbDevice> usbDeviceMap;
-
-    public static LynxModule CONTROL_HUB, EXPANSION_HUB;
+    private HashMap<LynxRespondable, CompletableFuture<LynxResponse>> commandMap;
 
     private OpModeManagerImpl opModeManager;
 
@@ -85,21 +47,13 @@ public class PhotonCore implements Runnable, OpModeManagerNotifier.Notifications
     public static ExperimentalParameters experimental = new ExperimentalParameters();
 
     public PhotonCore(){
-        CONTROL_HUB = null;
-        EXPANSION_HUB = null;
         enabled = new AtomicBoolean(false);
         threadEnabled = new AtomicBoolean(false);
-        usbDeviceMap = new HashMap<>();
+        commandMap = new HashMap<>();
     }
 
     public static void enable(){
         instance.enabled.set(true);
-        if(CONTROL_HUB.getBulkCachingMode() == LynxModule.BulkCachingMode.OFF){
-            CONTROL_HUB.setBulkCachingMode(LynxModule.BulkCachingMode.AUTO);
-        }
-        if(EXPANSION_HUB != null && EXPANSION_HUB.getBulkCachingMode() == LynxModule.BulkCachingMode.OFF){
-            EXPANSION_HUB.setBulkCachingMode(LynxModule.BulkCachingMode.AUTO);
-        }
     }
 
     public static void disable(){
@@ -112,88 +66,16 @@ public class PhotonCore implements Runnable, OpModeManagerNotifier.Notifications
         instance.opModeManager = eventLoop.getOpModeManager();
     }
 
-    protected static boolean registerSend(LynxCommand command) throws LynxUnsupportedCommandException, InterruptedException {
-
-        PhotonLynxModule photonModule = (PhotonLynxModule) command.getModule();
-
-        if(!instance.usbDeviceMap.containsKey(photonModule)){
-            return false;
-        }
-
-        synchronized (instance.messageSync) {
-            while (((PhotonLynxModule)photonModule).getUnfinishedCommands().size() > experimental.maximumParallelCommands.get()){
-                //RobotLog.ee("PhotonCore", ((PhotonLynxModule)CONTROL_HUB).getUnfinishedCommands().size() + " | " + ((PhotonLynxModule)EXPANSION_HUB).getUnfinishedCommands().size());
-            }
-
-            if(!experimental.singlethreadedOptimized.get()) {
-                boolean noSimilar = false;
-                while (!noSimilar) {
-                    noSimilar = true;
-                    for (LynxRespondable respondable : photonModule.getUnfinishedCommands().values()) {
-                        if (instance.isSimilar(respondable, command)) {
-                            noSimilar = false;
-                        }
-                    }
-                }
-            }
-
-            byte messageNum = photonModule.getNewMessageNumber();
-
-            command.setMessageNumber(messageNum);
-
-            try {
-                LynxDatagram datagram = new LynxDatagram(command);
-                command.setSerialization(datagram);
-
-                if (command.isAckable() || command.isResponseExpected()) {
-                    photonModule.getUnfinishedCommands().put(command.getMessageNumber(), (LynxRespondable) command);
-                }
-
-                byte[] bytes = datagram.toByteArray();
-
-                double msLatency = 0;
-                synchronized (instance.syncLock) {
-                    long start = System.nanoTime();
-                    instance.usbDeviceMap.get(photonModule).write(bytes);
-                    long stop = System.nanoTime();
-                    msLatency = (stop - start) * 1.0e-6;
-                }
-                //RobotLog.ii("PhotonCore", "Wrote " + bytes.length + " bytes " + photonModule.getUnfinishedCommands().size() + " | " + (msLatency));
-
-                if (shouldAckImmediately(command)) {
-                    command.onAckReceived(new LynxAck(photonModule, false));
-                }
-            } catch (LynxUnsupportedCommandException | RobotUsbException e) {
-                e.printStackTrace();
-            }
-        }
-
-        return true;
-    }
-
-    protected static boolean shouldParallelize(LynxCommand command){
-        return (command instanceof LynxSetMotorConstantPowerCommand) ||
-                (command instanceof LynxSetServoPulseWidthCommand);
-    }
-
-    protected static boolean shouldAckImmediately(LynxCommand command){
-        return (command instanceof LynxSetMotorConstantPowerCommand) ||
-                (command instanceof LynxSetServoPulseWidthCommand);
-    }
-
-    private boolean isSimilar(LynxRespondable respondable1, LynxRespondable respondable2){
-        return (respondable1.getDestModuleAddress() == respondable2.getDestModuleAddress()) &&
-                (respondable1.getCommandNumber() == respondable2.getCommandNumber());
-    }
-
-    protected static LynxMessage getCacheResponse(LynxCommand command){
-        return null;
-    }
-
     @Override
     public void run() {
         while(threadEnabled.get()){
-
+            if(enabled.get()){
+                for(LynxRespondable respondable : commandMap.keySet()){
+                    if(respondable.hasBeenAcknowledged()){
+                        
+                    }
+                }
+            }
             try {
                 Thread.sleep(5);
             } catch (InterruptedException e) {
@@ -204,213 +86,7 @@ public class PhotonCore implements Runnable, OpModeManagerNotifier.Notifications
 
     @Override
     public void onOpModePreInit(OpMode opMode) {
-        if(opModeManager.getActiveOpModeName().equals(OpModeManager.DEFAULT_OP_MODE_NAME)){
-            return;
-        }
 
-        HardwareMap map = opMode.hardwareMap;
-
-        boolean replacedPrev = false;
-        boolean hasChub = false;
-        for(LynxModule module : map.getAll(LynxModule.class)){
-            if(module instanceof PhotonLynxModule){
-                replacedPrev = true;
-            }
-            if(LynxConstants.isEmbeddedSerialNumber(module.getSerialNumber())){
-                hasChub = true;
-            }
-        }
-        if(replacedPrev){
-            HashMap<String, HardwareDevice> toRemove = new HashMap<>();
-            for(LynxModule module : map.getAll(LynxModule.class)){
-                if(!(module instanceof PhotonLynxModule)){
-                    toRemove.put((String) map.getNamesOf(module).toArray()[0], module);
-                }
-            }
-            for(String s : toRemove.keySet()){
-                map.remove(s, toRemove.get(s));
-            }
-        }else{
-            CONTROL_HUB = null;
-            EXPANSION_HUB = null;
-        }
-
-        instance.modules = map.getAll(LynxModule.class);
-        ArrayList<String> moduleNames = new ArrayList<>();
-        HashMap<LynxModule, PhotonLynxModule> replacements = new HashMap<>();
-        for(LynxModule module : instance.modules){
-            moduleNames.add((String) map.getNamesOf(module).toArray()[0]);
-        }
-        LynxUsbDeviceImpl usbDevice = null, usbDevice1 = null;
-        for(String s : moduleNames){
-            LynxModule module = (LynxModule) map.get(LynxModule.class, s);
-            if(module instanceof PhotonLynxModule){
-                continue;
-            }
-            try {
-                PhotonLynxModule photonLynxModule = new PhotonLynxModule(
-                        (LynxUsbDevice) ReflectionUtils.getField(module.getClass(), "lynxUsbDevice").get(module),
-                        (Integer)ReflectionUtils.getField(module.getClass(), "moduleAddress").get(module),
-                        (Boolean)ReflectionUtils.getField(module.getClass(), "isParent").get(module),
-                        (Boolean)ReflectionUtils.getField(module.getClass(), "isUserModule").get(module)
-                );
-                RobotLog.ee("PhotonCoreLynxNames", s);
-                ReflectionUtils.deepCopy(module, photonLynxModule);
-                map.remove(s, module);
-                map.put(s, photonLynxModule);
-                replacements.put(module, photonLynxModule);
-
-                if(module.isParent() && (hasChub && LynxConstants.isEmbeddedSerialNumber(module.getSerialNumber())) && CONTROL_HUB == null){
-                    CONTROL_HUB = photonLynxModule;
-
-                    ConcurrentHashMap<Integer, LynxRespondable> unfinishedCommands = new ConcurrentHashMap<>();
-                    try {
-                        Field f1 = module.getClass().getDeclaredField("lynxUsbDevice");
-                        f1.setAccessible(true);
-                        LynxUsbDevice tmp = (LynxUsbDevice) f1.get(module);
-                        if(tmp instanceof LynxUsbDeviceDelegate){
-                            Field tmp2 = LynxUsbDeviceDelegate.class.getDeclaredField("delegate");
-                            tmp2.setAccessible(true);
-                            usbDevice = (LynxUsbDeviceImpl) tmp2.get(tmp);
-                        }else{
-                            usbDevice = (LynxUsbDeviceImpl) tmp;
-                        }
-                        Field f2 = usbDevice.getClass().getSuperclass().getDeclaredField("robotUsbDevice");
-                        f2.setAccessible(true);
-                        Field f3 = usbDevice.getClass().getDeclaredField("engageLock");
-                        f3.setAccessible(true);
-                        syncLock = f3.get(usbDevice);
-
-                        robotUsbDevice = (RobotUsbDevice) f2.get(usbDevice);
-                        usbDeviceMap.put(photonLynxModule, robotUsbDevice);
-                    } catch (IllegalAccessException e) {
-                        e.printStackTrace();
-                    } catch(NoSuchFieldException e){
-                        e.printStackTrace();
-                    }
-                }else{
-                    if(module.isParent()) {
-                        try {
-                            Field f1 = module.getClass().getDeclaredField("lynxUsbDevice");
-                            f1.setAccessible(true);
-                            LynxUsbDevice tmp = (LynxUsbDevice) f1.get(module);
-                            if (tmp instanceof LynxUsbDeviceDelegate) {
-                                Field tmp2 = LynxUsbDeviceDelegate.class.getDeclaredField("delegate");
-                                tmp2.setAccessible(true);
-                                usbDevice = (LynxUsbDeviceImpl) tmp2.get(tmp);
-                            } else {
-                                usbDevice = (LynxUsbDeviceImpl) tmp;
-                            }
-                            Field f2 = usbDevice.getClass().getSuperclass().getDeclaredField("robotUsbDevice");
-                            f2.setAccessible(true);
-                            Field f3 = usbDevice.getClass().getDeclaredField("engageLock");
-                            f3.setAccessible(true);
-                            syncLock = f3.get(usbDevice);
-
-                            robotUsbDevice = (RobotUsbDevice) f2.get(usbDevice);
-                            usbDeviceMap.put(photonLynxModule, robotUsbDevice);
-                        } catch (NoSuchFieldException e) {
-                            e.printStackTrace();
-                        }
-                    }
-                    EXPANSION_HUB = photonLynxModule;
-                }
-            } catch (IllegalAccessException e) {
-                e.printStackTrace();
-            }
-        }
-
-        for(LynxModule m : replacements.keySet()){
-            usbDevice.removeConfiguredModule(m);
-            try {
-                usbDevice.addConfiguredModule(replacements.get(m));
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            } catch (RobotCoreException e) {
-                e.printStackTrace();
-            }
-        }
-
-        HashMap<String, HardwareDevice> replacedNeutrino = new HashMap<>(), removedNeutrino = new HashMap<>();
-        for(HardwareDevice device : map.getAll(HardwareDevice.class)){
-            if(!(device instanceof LynxModule)){
-                RobotLog.i(map.getNamesOf(device).toArray()[0].toString());
-                if(device instanceof I2cDeviceSynchDevice){
-                    try {
-                        I2cDeviceSynchSimple device2 = (I2cDeviceSynchSimple) ReflectionUtils.getField(device.getClass(), "deviceClient").get(device);
-                        if(!(device2 instanceof LynxI2cDeviceSynch)){
-                            device2 = (I2cDeviceSynchSimple) ReflectionUtils.getField(device2.getClass(), "i2cDeviceSynchSimple").get(device2);
-                        }
-                        setLynxObject(device2, replacements);
-                        RobotLog.e("" + (device2 instanceof LynxI2cDeviceSynch));
-                    } catch (Exception ignored) {
-                    }
-                }else if (device instanceof I2cDeviceSynchSimple){
-                    try {
-                        I2cDeviceSynchSimple device2 = (I2cDeviceSynchSimple) ReflectionUtils.getField(device.getClass(), "deviceClient").get(device);
-                        setLynxObject(device2, replacements);
-                    } catch (Exception ignored) {
-                    }
-                }else {
-                    setLynxObject(device, replacements);
-                }
-                if(device instanceof Rev2mDistanceSensor){
-                    I2cDeviceSynch tmp = null;
-                    boolean owned = false;
-                    try {
-                        tmp = (I2cDeviceSynch) ReflectionUtils.getField(device.getClass(), "deviceClient").get(device);
-                        owned = (boolean) ReflectionUtils.getField(device.getClass(), "deviceClientIsOwned").get(device);
-                    } catch (IllegalAccessException e) {
-                        e.printStackTrace();
-                    }
-                    Rev2mDistanceSensorEx vl53L0XEx = new Rev2mDistanceSensorEx(tmp, owned);
-                    replacedNeutrino.put((String) map.getNamesOf(device).toArray()[0], vl53L0XEx);
-                    removedNeutrino.put((String) map.getNamesOf(device).toArray()[0], device);
-                }
-                if(device instanceof RevColorSensorV3){
-                    RevColorSensorV3Ex revColorSensorV3Ex;
-                    boolean owned = false;
-                    try {
-                        I2cDeviceSynchSimple tmp = (I2cDeviceSynchSimple) ReflectionUtils.getField(device.getClass(), "deviceClient").get(device);
-                        owned = (boolean) ReflectionUtils.getField(device.getClass(), "deviceClientIsOwned").get(device);
-                        revColorSensorV3Ex = new RevColorSensorV3Ex(tmp, owned);
-                        replacedNeutrino.put((String) map.getNamesOf(device).toArray()[0], revColorSensorV3Ex);
-                        removedNeutrino.put((String) map.getNamesOf(device).toArray()[0], device);
-                    } catch (IllegalAccessException e) {
-                        e.printStackTrace();
-                    }
-                }
-            }
-        }
-
-        for(String s : replacedNeutrino.keySet()){
-            map.remove(s, removedNeutrino.get(s));
-            map.put(s, replacedNeutrino.get(s));
-        }
-
-        if(thisThread == null || !thisThread.isAlive()){
-            thisThread = new Thread(this);
-            threadEnabled.set(true);
-            thisThread.start();
-        }
-    }
-
-    private void setLynxObject(Object device, HashMap<LynxModule, PhotonLynxModule> replacements){
-        Field f = ReflectionUtils.getField(device.getClass(), LynxModule.class);
-        if (f != null) {
-            f.setAccessible(true);
-            try {
-                LynxModule module = (LynxModule) f.get(device);
-                if (module == null) {
-                    return;
-                }
-                if (replacements.containsKey(module)) {
-                    f.set(device, replacements.get(module));
-                }
-            } catch (IllegalAccessException e) {
-                e.printStackTrace();
-            }
-        }
     }
 
     @Override
