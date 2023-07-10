@@ -4,7 +4,7 @@ import java.lang.reflect.Field
 
 object ReflectionUtils {
     @JvmStatic
-    fun getField(clazz: Class<*>, fieldName: String?): Field? {
+    fun getField(clazz: Class<*>, fieldName: String): Field? {
         try {
             val f = clazz.getDeclaredField(fieldName)
             f.isAccessible = true
