@@ -11,16 +11,14 @@ import com.qualcomm.hardware.lynx.LynxNackException
 import com.qualcomm.hardware.lynx.Supplier
 import com.qualcomm.hardware.lynx.commands.LynxCommand
 import com.qualcomm.hardware.lynx.commands.core.LynxI2cWriteSingleByteCommand
-import com.qualcomm.hardware.lynx.commands.standard.LynxNack
 import com.qualcomm.hardware.lynx.commands.standard.LynxNack.StandardReasonCode
 import com.qualcomm.robotcore.exception.RobotCoreException
 import com.qualcomm.robotcore.hardware.I2cWaitControl
 import com.qualcomm.robotcore.hardware.I2cWarningManager
 import com.qualcomm.robotcore.hardware.TimestampedData
 import com.qualcomm.robotcore.hardware.TimestampedI2cData
-import java.util.logging.LogManager
 
-class PhotonLynxI2cDeviceSynchV1(private val hal: HAL, context: Context?, module: LynxModule?, bus: Int) :
+class PhotonLynxI2cDeviceSyncV1(private val hal: HAL, context: Context?, module: LynxModule?, bus: Int) :
     LynxI2cDeviceSynchV1(context, module, bus), PhotonLynxI2cDeviceSynch {
     private var interleavedCommand: LynxCommand<*>? = null
     override fun setInterleavedCommand(command: LynxCommand<*>?) {
@@ -72,7 +70,7 @@ class PhotonLynxI2cDeviceSynchV1(private val hal: HAL, context: Context?, module
                 hal.write(transactionSupplier.get())
                 break
             } catch (e: LynxNackException) {
-                attempts += 1;
+                attempts++
                 when (e.nack.nackReasonCodeAsEnum) {
                     StandardReasonCode.I2C_MASTER_BUSY, StandardReasonCode.I2C_OPERATION_IN_PROGRESS -> {}
                     else -> throw e

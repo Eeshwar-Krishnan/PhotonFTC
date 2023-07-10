@@ -14,7 +14,7 @@ import com.qualcomm.robotcore.hardware.I2cWarningManager
 import com.qualcomm.robotcore.hardware.TimestampedData
 import com.qualcomm.robotcore.hardware.TimestampedI2cData
 
-class PhotonLynxI2cDeviceSynchV2(private val hal: HAL, context: Context?, module: LynxModule?, bus: Int) :
+class PhotonLynxI2cDeviceSyncV2(private val hal: HAL, context: Context?, module: LynxModule?, bus: Int) :
     LynxI2cDeviceSynchV2(context, module, bus), PhotonLynxI2cDeviceSynch {
     private var interleavedCommand: LynxCommand<*>? = null
     override fun setInterleavedCommand(command: LynxCommand<*>?) {
@@ -28,14 +28,8 @@ class PhotonLynxI2cDeviceSynchV2(private val hal: HAL, context: Context?, module
     @Synchronized
     override fun readTimeStamped(ireg: Int, creg: Int): TimestampedData {
         try {
-            val readWriteTxSupplier: Supplier<LynxCommand<*>> = Supplier<LynxCommand<*>> {
-                PhotonLynxI2cWriteReadMultipleBytesCommand(
-                    module,
-                    bus,
-                    i2cAddr,
-                    ireg,
-                    creg
-                )
+            val readWriteTxSupplier = Supplier<LynxCommand<*>> {
+                PhotonLynxI2cWriteReadMultipleBytesCommand(module, bus, i2cAddr, ireg, creg)
             }
             return acquireI2cLockWhile {
                 sendI2cTransaction(readWriteTxSupplier)
@@ -61,14 +55,19 @@ class PhotonLynxI2cDeviceSynchV2(private val hal: HAL, context: Context?, module
 
     @Throws(LynxNackException::class, InterruptedException::class, RobotCoreException::class)
     override fun sendI2cTransaction(transactionSupplier: Supplier<out LynxCommand<*>?>) {
-        while (true) {
+        var attempts = 0;
+        while (attempts<5) {
             try {
                 hal.write(transactionSupplier.get())
                 break
             } catch (e: LynxNackException) {
+                attempts++
                 when (e.nack.nackReasonCodeAsEnum) {
                     StandardReasonCode.I2C_MASTER_BUSY, StandardReasonCode.I2C_OPERATION_IN_PROGRESS -> {}
                     else -> throw e
+                }
+                if (attempts == 5) {
+                    error("I2C transaction failed after 5 attempts, giving up.")
                 }
             }
         }

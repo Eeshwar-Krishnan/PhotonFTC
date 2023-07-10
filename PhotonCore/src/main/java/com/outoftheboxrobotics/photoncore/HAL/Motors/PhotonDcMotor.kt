@@ -23,8 +23,9 @@ import java.util.concurrent.CompletableFuture
 import java.util.concurrent.ExecutionException
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.TimeoutException
+import kotlin.math.roundToInt
 
-open class PhotonDcMotor protected constructor(private val hal: HAL, private val port: Int) : DcMotorEx {
+class PhotonDcMotor protected constructor(private val hal: HAL, private val port: Int) : DcMotorEx {
     private val enabled: LastKnown<Boolean>
     private val setVelocity: LastKnown<Int>
     private val velocity: LastKnown<Double>
@@ -128,11 +129,7 @@ open class PhotonDcMotor protected constructor(private val hal: HAL, private val
             RunMode.RUN_USING_ENCODER, RunMode.RUN_TO_POSITION -> {}
             else -> mode = RunMode.RUN_USING_ENCODER
         }
-        val iTicksPerSecond = Range.clip(
-            Math.round(angularRate).toInt(),
-            LynxSetMotorTargetVelocityCommand.apiVelocityFirst,
-            LynxSetMotorTargetVelocityCommand.apiVelocityLast
-        )
+        val iTicksPerSecond = Range.clip(angularRate.roundToInt(), LynxSetMotorTargetVelocityCommand.apiVelocityFirst, LynxSetMotorTargetVelocityCommand.apiVelocityLast)
         try {
             if (setVelocity.updateValue(iTicksPerSecond)) {
                 val command = PhotonLynxSetMotorTargetVelocityCommand(
@@ -239,96 +236,127 @@ open class PhotonDcMotor protected constructor(private val hal: HAL, private val
         return pidCoefficients.rawValue
     }
 
-    override fun getPIDFCoefficients(mode: RunMode): PIDFCoefficients? {
-        return null
+    override fun getPIDFCoefficients(mode: RunMode?): PIDFCoefficients {
+        TODO("Not yet implemented")
     }
 
-    override fun setTargetPositionTolerance(tolerance: Int) {}
+    override fun setTargetPositionTolerance(tolerance: Int) {
+        TODO("Not yet implemented")
+    }
+
     override fun getTargetPositionTolerance(): Int {
-        return 0
+        TODO("Not yet implemented")
     }
 
-    override fun getCurrent(unit: CurrentUnit): Double {
-        return 0.0
+    override fun getCurrent(unit: CurrentUnit?): Double {
+        TODO("Not yet implemented")
     }
 
-    override fun getCurrentAlert(unit: CurrentUnit): Double {
-        return 0.0
+    override fun getCurrentAlert(unit: CurrentUnit?): Double {
+        TODO("Not yet implemented")
     }
 
-    override fun setCurrentAlert(current: Double, unit: CurrentUnit) {}
+    override fun setCurrentAlert(current: Double, unit: CurrentUnit?) {
+        TODO("Not yet implemented")
+    }
+
     override fun isOverCurrent(): Boolean {
-        return false
+        TODO("Not yet implemented")
     }
 
-    override fun getMotorType(): MotorConfigurationType? {
-        return null
+    override fun getManufacturer(): Manufacturer {
+        TODO("Not yet implemented")
     }
 
-    override fun setMotorType(motorType: MotorConfigurationType) {}
-    override fun getController(): DcMotorController? {
-        return null
+    override fun getDeviceName(): String {
+        TODO("Not yet implemented")
     }
 
-    override fun getPortNumber(): Int {
-        return 0
-    }
-
-    override fun setZeroPowerBehavior(zeroPowerBehavior: ZeroPowerBehavior) {}
-    override fun getZeroPowerBehavior(): ZeroPowerBehavior? {
-        return null
-    }
-
-    @Deprecated("Deprecated in Java")
-    override fun setPowerFloat() {}
-    override fun getPowerFloat(): Boolean {
-        return false
-    }
-
-    override fun setTargetPosition(position: Int) {}
-    override fun getTargetPosition(): Int {
-        return 0
-    }
-
-    override fun isBusy(): Boolean {
-        return false
-    }
-
-    override fun getCurrentPosition(): Int {
-        return 0
-    }
-
-    override fun setMode(mode: RunMode) {}
-    override fun getMode(): RunMode? {
-        return null
-    }
-
-    override fun setDirection(direction: DcMotorSimple.Direction) {}
-    override fun getDirection(): DcMotorSimple.Direction? {
-        return null
-    }
-
-    override fun setPower(power: Double) {}
-    override fun getPower(): Double {
-        return 0.0
-    }
-
-    override fun getManufacturer(): Manufacturer? {
-        return null
-    }
-
-    override fun getDeviceName(): String? {
-        return null
-    }
-
-    override fun getConnectionInfo(): String? {
-        return null
+    override fun getConnectionInfo(): String {
+        TODO("Not yet implemented")
     }
 
     override fun getVersion(): Int {
-        return 0
+        TODO("Not yet implemented")
     }
 
-    override fun resetDeviceConfigurationForOpMode() {}
-    override fun close() {}
+    override fun resetDeviceConfigurationForOpMode() {
+        TODO("Not yet implemented")
+    }
+
+    override fun close() {
+        TODO("Not yet implemented")
+    }
+
+    override fun setDirection(direction: DcMotorSimple.Direction?) {
+        TODO("Not yet implemented")
+    }
+
+    override fun getDirection(): DcMotorSimple.Direction {
+        TODO("Not yet implemented")
+    }
+
+    override fun setPower(power: Double) {
+        TODO("Not yet implemented")
+    }
+
+    override fun getPower(): Double {
+        TODO("Not yet implemented")
+    }
+
+    override fun getMotorType(): MotorConfigurationType {
+        TODO("Not yet implemented")
+    }
+
+    override fun setMotorType(motorType: MotorConfigurationType?) {
+        TODO("Not yet implemented")
+    }
+
+    override fun getController(): DcMotorController {
+        TODO("Not yet implemented")
+    }
+
+    override fun getPortNumber(): Int {
+        TODO("Not yet implemented")
+    }
+
+    override fun setZeroPowerBehavior(zeroPowerBehavior: ZeroPowerBehavior?) {
+        TODO("Not yet implemented")
+    }
+
+    override fun getZeroPowerBehavior(): ZeroPowerBehavior {
+        TODO("Not yet implemented")
+    }
+
+    override fun setPowerFloat() {
+        TODO("Not yet implemented")
+    }
+
+    override fun getPowerFloat(): Boolean {
+        TODO("Not yet implemented")
+    }
+
+    override fun setTargetPosition(position: Int) {
+        TODO("Not yet implemented")
+    }
+
+    override fun getTargetPosition(): Int {
+        TODO("Not yet implemented")
+    }
+
+    override fun isBusy(): Boolean {
+        TODO("Not yet implemented")
+    }
+
+    override fun getCurrentPosition(): Int {
+        TODO("Not yet implemented")
+    }
+
+    override fun setMode(mode: RunMode?) {
+        TODO("Not yet implemented")
+    }
+
+    override fun getMode(): RunMode {
+        TODO("Not yet implemented")
+    }
 }

@@ -1,4 +1,4 @@
-package com.outoftheboxrobotics.photoncore.HAL.Motors.Commands
+package com.outoftheboxrobotics.photoncore.HAL
 
 import com.qualcomm.hardware.lynx.LynxNackException
 import com.qualcomm.hardware.lynx.commands.LynxMessage

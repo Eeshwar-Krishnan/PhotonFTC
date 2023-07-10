@@ -1,6 +1,6 @@
 package com.outoftheboxrobotics.photoncore.HAL.I2C.Commands
 
-import com.outoftheboxrobotics.photoncore.HAL.Motors.Commands.PhotonCommandBase
+import com.outoftheboxrobotics.photoncore.HAL.PhotonCommandBase
 import com.qualcomm.hardware.lynx.LynxModuleIntf
 import com.qualcomm.hardware.lynx.commands.LynxMessage
 import com.qualcomm.hardware.lynx.commands.core.LynxI2cReadSingleByteCommand
