@@ -1,6 +1,7 @@
 plugins {
     id 'com.android.library'
     id 'maven-publish'
+    id 'org.jetbrains.kotlin.android'
 }
 
 repositories {
@@ -8,12 +9,12 @@ repositories {
 }
 
 android {
-    compileSdkVersion 30
+    compileSdkVersion 34
     buildToolsVersion "30.0.3"
 
     defaultConfig {
         minSdkVersion 24
-        targetSdkVersion 30
+        targetSdkVersion 34
         versionCode 1
         versionName "1.0"
 
@@ -44,12 +45,13 @@ afterEvaluate {
 }
 
 dependencies {
+    implementation 'androidx.core:core-ktx:1.10.1'
     compileOnly 'org.jetbrains:annotations:15.0'
-    compileOnly "androidx.annotation:annotation:1.4.0"
+    compileOnly "androidx.annotation:annotation:1.6.0"
 
-    compileOnly 'org.firstinspires.ftc:RobotCore:8.1.0'
-    compileOnly 'org.firstinspires.ftc:Hardware:8.1.0'
-    compileOnly 'org.firstinspires.ftc:FtcCommon:8.1.0'
+    compileOnly 'org.firstinspires.ftc:RobotCore:8.1.1'
+    compileOnly 'org.firstinspires.ftc:Hardware:8.1.1'
+    compileOnly 'org.firstinspires.ftc:FtcCommon:8.1.1'
     compileOnly 'org.reflections:reflections:0.10.2'
     compileOnly 'commons-beanutils:commons-beanutils:1.9.4'
 
