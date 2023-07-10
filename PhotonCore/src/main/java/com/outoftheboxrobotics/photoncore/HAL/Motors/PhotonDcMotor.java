@@ -3,6 +3,7 @@ package com.outoftheboxrobotics.photoncore.HAL.Motors;
 import com.outoftheboxrobotics.photoncore.HAL.HAL;
 import com.outoftheboxrobotics.photoncore.HAL.Motors.Commands.PhotonLynxGetMotorChannelEnableCommand;
 import com.outoftheboxrobotics.photoncore.HAL.Motors.Commands.PhotonLynxGetMotorPIDControlLoopCoefficientsCommand;
+import com.outoftheboxrobotics.photoncore.HAL.Motors.Commands.PhotonLynxGetMtorPIDFControlLoopCoefficientsCommand;
 import com.outoftheboxrobotics.photoncore.HAL.Motors.Commands.PhotonLynxSetMotorChannelEnableCommand;
 import com.outoftheboxrobotics.photoncore.HAL.Motors.Commands.PhotonLynxSetMotorPIDFControlLoopCoefficientsCommand;
 import com.outoftheboxrobotics.photoncore.HAL.Motors.Commands.PhotonLynxSetMotorTargetVelocityCommand;
@@ -12,6 +13,7 @@ import com.qualcomm.hardware.lynx.commands.LynxMessage;
 import com.qualcomm.hardware.lynx.commands.core.LynxGetMotorChannelEnableResponse;
 import com.qualcomm.hardware.lynx.commands.core.LynxGetMotorPIDControlLoopCoefficientsCommand;
 import com.qualcomm.hardware.lynx.commands.core.LynxGetMotorPIDControlLoopCoefficientsResponse;
+import com.qualcomm.hardware.lynx.commands.core.LynxGetMotorPIDFControlLoopCoefficientsResponse;
 import com.qualcomm.hardware.lynx.commands.core.LynxSetMotorPIDControlLoopCoefficientsCommand;
 import com.qualcomm.hardware.lynx.commands.core.LynxSetMotorPIDFControlLoopCoefficientsCommand;
 import com.qualcomm.hardware.lynx.commands.core.LynxSetMotorTargetVelocityCommand;
@@ -222,34 +224,70 @@ public class PhotonDcMotor implements DcMotorEx {
 
     @Override
     public PIDCoefficients getPIDCoefficients(RunMode mode) {
+        try {
+            return getPIDCoefficientsAsync(mode).get();
+        } catch (ExecutionException | InterruptedException e) {
+            e.printStackTrace();
+        }
+        return pidCoefficients.getRawValue();
+    }
+
+    public CompletableFuture<PIDCoefficients> getPIDCoefficientsAsync(RunMode mode) {
+        CompletableFuture<PIDCoefficients> future = new CompletableFuture<>();
         if(pidCoefficients.isValid()){
-            return pidCoefficients.getValue();
+            future.complete(pidCoefficients.getValue());
         }else{
             PhotonLynxGetMotorPIDControlLoopCoefficientsCommand command = new PhotonLynxGetMotorPIDControlLoopCoefficientsCommand(hal.getLynxModule(), port, mode);
             hal.write(command);
             try {
-                LynxMessage message = command.getResponse().get(1, TimeUnit.SECONDS);
-                LynxGetMotorPIDControlLoopCoefficientsResponse response = (LynxGetMotorPIDControlLoopCoefficientsResponse) message;
-                pidCoefficients.invalidate();
+                future = command.getResponse().thenApply(message -> {
+                    LynxGetMotorPIDControlLoopCoefficientsResponse response = (LynxGetMotorPIDControlLoopCoefficientsResponse) message;
+                    pidCoefficients.invalidate();
 
-                PIDCoefficients coefficients =  new PIDCoefficients(
+                    PIDCoefficients coefficients =  new PIDCoefficients(
+                            LynxSetMotorPIDControlLoopCoefficientsCommand.externalCoefficientFromInternal(response.getP()),
+                            LynxSetMotorPIDControlLoopCoefficientsCommand.externalCoefficientFromInternal(response.getI()),
+                            LynxSetMotorPIDControlLoopCoefficientsCommand.externalCoefficientFromInternal(response.getD())
+                    );
+
+                    pidCoefficients.updateValue(coefficients);
+                    return coefficients;
+                });
+
+                return future;
+            } catch (LynxNackException e) {
+                e.printStackTrace();
+            }
+        }
+        return future;
+    }
+
+    @Override
+    public PIDFCoefficients getPIDFCoefficients(RunMode mode) {
+        if(pidfCoefficients.isValid()){
+            return pidfCoefficients.getValue();
+        }else{
+            PhotonLynxGetMtorPIDFControlLoopCoefficientsCommand command = new PhotonLynxGetMtorPIDFControlLoopCoefficientsCommand(hal.getLynxModule(), port, mode);
+            hal.write(command);
+            try {
+                LynxMessage message = command.getResponse().get(1, TimeUnit.SECONDS);
+                LynxGetMotorPIDFControlLoopCoefficientsResponse response = (LynxGetMotorPIDFControlLoopCoefficientsResponse) message;
+                pidfCoefficients.invalidate();
+
+                PIDFCoefficients coefficients =  new PIDFCoefficients(
                         LynxSetMotorPIDControlLoopCoefficientsCommand.externalCoefficientFromInternal(response.getP()),
                         LynxSetMotorPIDControlLoopCoefficientsCommand.externalCoefficientFromInternal(response.getI()),
-                        LynxSetMotorPIDControlLoopCoefficientsCommand.externalCoefficientFromInternal(response.getD())
+                        LynxSetMotorPIDControlLoopCoefficientsCommand.externalCoefficientFromInternal(response.getD()),
+                        0
                 );
 
-                pidCoefficients.updateValue(coefficients);
+                pidfCoefficients.updateValue(coefficients);
                 return coefficients;
             } catch (ExecutionException | InterruptedException | TimeoutException | LynxNackException e) {
                 e.printStackTrace();
             }
         }
-        return pidCoefficients.getRawValue();
-    }
-
-    @Override
-    public PIDFCoefficients getPIDFCoefficients(RunMode mode) {
-        return null;
+        return pidfCoefficients.getRawValue();
     }
 
     @Override

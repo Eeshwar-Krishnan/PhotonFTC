@@ -35,6 +35,16 @@ public class PhotonLynxSetMotorChannelEnableCommand extends LynxSetMotorChannelE
     }
 
     @Override
+    public void acquireNetworkLock() throws InterruptedException {
+        //Nah, I'm gonna do my own thing
+    }
+
+    @Override
+    public void releaseNetworkLock() throws InterruptedException {
+        //Nah, I'm gonna do my own thing
+    }
+
+    @Override
     public CompletableFuture<LynxMessage> getResponse() throws LynxNackException {
         return future;
     }

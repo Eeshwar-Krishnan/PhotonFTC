@@ -40,6 +40,16 @@ public class PhotonLynxGetMotorChannelEnableCommand<RESPONSE extends LynxMessage
         return future;
     }
 
+    @Override
+    public void acquireNetworkLock() throws InterruptedException {
+        //Nah, I'm gonna do my own thing
+    }
+
+    @Override
+    public void releaseNetworkLock() throws InterruptedException {
+        //Nah, I'm gonna do my own thing
+    }
+
     public PhotonLynxGetMotorChannelEnableCommand(LynxModuleIntf module, int motorz) {
         super(module, motorz);
     }

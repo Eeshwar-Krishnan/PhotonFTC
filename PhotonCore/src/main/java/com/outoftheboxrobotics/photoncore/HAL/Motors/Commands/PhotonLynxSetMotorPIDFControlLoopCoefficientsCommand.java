@@ -30,6 +30,16 @@ public class PhotonLynxSetMotorPIDFControlLoopCoefficientsCommand extends LynxSe
         future.complete(nack);
     }
 
+    @Override
+    public void acquireNetworkLock() throws InterruptedException {
+        //Nah, I'm gonna do my own thing
+    }
+
+    @Override
+    public void releaseNetworkLock() throws InterruptedException {
+        //Nah, I'm gonna do my own thing
+    }
+
     public PhotonLynxSetMotorPIDFControlLoopCoefficientsCommand(LynxModuleIntf module, int motorZ, DcMotor.RunMode mode, int p, int i, int d, int f, InternalMotorControlAlgorithm motorControlAlgorithm) {
         super(module, motorZ, mode, p, i, d, f, motorControlAlgorithm);
     }
