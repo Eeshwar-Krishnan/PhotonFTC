@@ -3,15 +3,19 @@ package com.outoftheboxrobotics.photoncore.HAL.Motors.Commands;
 import com.qualcomm.hardware.lynx.LynxModuleIntf;
 import com.qualcomm.hardware.lynx.LynxNackException;
 import com.qualcomm.hardware.lynx.commands.LynxMessage;
-import com.qualcomm.hardware.lynx.commands.core.LynxGetMotorPIDControlLoopCoefficientsCommand;
+import com.qualcomm.hardware.lynx.commands.core.LynxGetMotorChannelModeCommand;
 import com.qualcomm.hardware.lynx.commands.standard.LynxAck;
 import com.qualcomm.hardware.lynx.commands.standard.LynxNack;
 import com.qualcomm.robotcore.hardware.DcMotor;
 
 import java.util.concurrent.CompletableFuture;
 
-public class PhotonLynxGetMotorPIDControlLoopCoefficientsCommand extends LynxGetMotorPIDControlLoopCoefficientsCommand implements PhotonCommandBase {
+public class PhotonLynxGetMotorChannelModeCommand extends LynxGetMotorChannelModeCommand implements PhotonCommandBase {
     private final CompletableFuture<LynxMessage> future = new CompletableFuture<>();
+
+    public PhotonLynxGetMotorChannelModeCommand(LynxModuleIntf module, int motorZ) {
+        super(module, motorZ);
+    }
 
     @Override
     public void onResponseReceived(LynxMessage response) {
@@ -39,10 +43,6 @@ public class PhotonLynxGetMotorPIDControlLoopCoefficientsCommand extends LynxGet
     @Override
     public void releaseNetworkLock() throws InterruptedException {
         return;
-    }
-
-    public PhotonLynxGetMotorPIDControlLoopCoefficientsCommand(LynxModuleIntf module, int motorZ, DcMotor.RunMode mode) {
-        super(module, motorZ, mode);
     }
 
     @Override

@@ -2,20 +2,20 @@ package com.outoftheboxrobotics.photoncore.HAL.Motors.Commands;
 
 import com.qualcomm.hardware.lynx.LynxModuleIntf;
 import com.qualcomm.hardware.lynx.LynxNackException;
-import com.qualcomm.hardware.lynx.commands.LynxDatagram;
-import com.qualcomm.hardware.lynx.commands.LynxInterfaceResponse;
 import com.qualcomm.hardware.lynx.commands.LynxMessage;
-import com.qualcomm.hardware.lynx.commands.core.LynxGetMotorChannelEnableCommand;
-import com.qualcomm.hardware.lynx.commands.core.LynxGetMotorChannelEnableResponse;
+import com.qualcomm.hardware.lynx.commands.core.LynxGetADCCommand;
 import com.qualcomm.hardware.lynx.commands.standard.LynxAck;
 import com.qualcomm.hardware.lynx.commands.standard.LynxNack;
-import com.qualcomm.robotcore.hardware.configuration.LynxConstants;
 
-import java.nio.ByteBuffer;
 import java.util.concurrent.CompletableFuture;
 
-public class PhotonLynxGetMotorChannelEnableCommand<RESPONSE extends LynxMessage> extends LynxGetMotorChannelEnableCommand implements PhotonCommandBase{
-    private final CompletableFuture<LynxMessage> future = new CompletableFuture<>();
+public class PhotonLynxGetADCCommand extends LynxGetADCCommand implements PhotonCommandBase {
+
+    private CompletableFuture<LynxMessage> future;
+
+    public PhotonLynxGetADCCommand(LynxModuleIntf module, Channel channel, Mode mode) {
+        super(module, channel, mode);
+    }
 
     @Override
     public void onResponseReceived(LynxMessage response) {
@@ -48,9 +48,5 @@ public class PhotonLynxGetMotorChannelEnableCommand<RESPONSE extends LynxMessage
     @Override
     public void releaseNetworkLock() throws InterruptedException {
         return;
-    }
-
-    public PhotonLynxGetMotorChannelEnableCommand(LynxModuleIntf module, int motorz) {
-        super(module, motorz);
     }
 }
