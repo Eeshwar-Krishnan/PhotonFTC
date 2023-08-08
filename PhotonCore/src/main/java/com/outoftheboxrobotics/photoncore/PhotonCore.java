@@ -1,8 +1,10 @@
 package com.outoftheboxrobotics.photoncore;
 
+import com.outoftheboxrobotics.photoncore.HAL.HAL;
 import com.outoftheboxrobotics.photoncore.HAL.Motors.Commands.PhotonCommandBase;
 import com.outoftheboxrobotics.photoncore.HAL.Motors.Commands.PhotonLynxGetBulkInputDataCommand;
 import com.outoftheboxrobotics.photoncore.HAL.PhotonHAL;
+import com.qualcomm.hardware.lynx.LynxDcMotorController;
 import com.qualcomm.hardware.lynx.LynxModule;
 import com.qualcomm.hardware.lynx.LynxNackException;
 import com.qualcomm.hardware.lynx.commands.core.LynxGetBulkInputDataResponse;
@@ -61,8 +63,8 @@ public class PhotonCore implements Runnable {
         return instance.commandHal;
     }
 
-    public static LynxGetBulkInputDataResponse getControlData(){
-        synchronized (instance.commandLock){
+    public static LynxGetBulkInputDataResponse getControlData() {
+        synchronized (instance.commandLock) {
             return instance.commandBulkData;
         }
     }
@@ -104,6 +106,9 @@ public class PhotonCore implements Runnable {
             }
             if(System.currentTimeMillis() > timer){
                 timer = System.currentTimeMillis() + experimental.bulkDataUpdateMs.get();
+
+                /**
+                 * ..and so he left, more steel and circuit than man
                 if(commandHal != null && !controlInFlight.get()){
                     PhotonLynxGetBulkInputDataCommand command = new PhotonLynxGetBulkInputDataCommand(commandHal.getLynxModule());
                     try {
@@ -120,6 +125,7 @@ public class PhotonCore implements Runnable {
                         e.printStackTrace();
                     }
                 }
+                 */
             }
 
             commandList.removeIf((command) -> {
