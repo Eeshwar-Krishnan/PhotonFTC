@@ -1,6 +1,7 @@
 package com.outoftheboxrobotics.photoncore.HAL.Motors.Commands;
 
 import com.qualcomm.hardware.lynx.LynxModuleIntf;
+import com.qualcomm.hardware.lynx.LynxNackException;
 import com.qualcomm.hardware.lynx.commands.LynxMessage;
 import com.qualcomm.hardware.lynx.commands.core.LynxSetMotorPIDFControlLoopCoefficientsCommand;
 import com.qualcomm.hardware.lynx.commands.standard.LynxAck;
@@ -9,8 +10,8 @@ import com.qualcomm.robotcore.hardware.DcMotor;
 
 import java.util.concurrent.CompletableFuture;
 
-public class PhotonLynxSetMotorPIDFControlLoopCoefficientsCommand extends LynxSetMotorPIDFControlLoopCoefficientsCommand {
-    private CompletableFuture<LynxMessage> future;
+public class PhotonLynxSetMotorPIDFControlLoopCoefficientsCommand extends LynxSetMotorPIDFControlLoopCoefficientsCommand implements PhotonCommandBase {
+    private final CompletableFuture<LynxMessage> future = new CompletableFuture<>();
 
     @Override
     public void onResponseReceived(LynxMessage response) {
@@ -28,6 +29,21 @@ public class PhotonLynxSetMotorPIDFControlLoopCoefficientsCommand extends LynxSe
     public void onNackReceived(LynxNack nack) {
         super.onNackReceived(nack);
         future.complete(nack);
+    }
+
+    @Override
+    public CompletableFuture<LynxMessage> getResponse() throws LynxNackException {
+        return future;
+    }
+
+    @Override
+    public void acquireNetworkLock() throws InterruptedException {
+        return;
+    }
+
+    @Override
+    public void releaseNetworkLock() throws InterruptedException {
+        return;
     }
 
     public PhotonLynxSetMotorPIDFControlLoopCoefficientsCommand(LynxModuleIntf module, int motorZ, DcMotor.RunMode mode, int p, int i, int d, int f, InternalMotorControlAlgorithm motorControlAlgorithm) {

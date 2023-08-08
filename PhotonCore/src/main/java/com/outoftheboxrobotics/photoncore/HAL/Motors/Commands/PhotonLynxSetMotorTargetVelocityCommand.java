@@ -11,7 +11,7 @@ import com.qualcomm.hardware.lynx.commands.standard.LynxNack;
 import java.util.concurrent.CompletableFuture;
 
 public class PhotonLynxSetMotorTargetVelocityCommand extends LynxSetMotorTargetVelocityCommand implements PhotonCommandBase{
-    private CompletableFuture<LynxMessage> future;
+    private final CompletableFuture<LynxMessage> future = new CompletableFuture<>();
 
     @Override
     public void onResponseReceived(LynxMessage response) {
@@ -29,6 +29,16 @@ public class PhotonLynxSetMotorTargetVelocityCommand extends LynxSetMotorTargetV
     public void onNackReceived(LynxNack nack) {
         super.onNackReceived(nack);
         future.complete(nack);
+    }
+
+    @Override
+    public void acquireNetworkLock() throws InterruptedException {
+        return;
+    }
+
+    @Override
+    public void releaseNetworkLock() throws InterruptedException {
+        return;
     }
 
     public PhotonLynxSetMotorTargetVelocityCommand(LynxModuleIntf module, int motorZ, int velocity) {

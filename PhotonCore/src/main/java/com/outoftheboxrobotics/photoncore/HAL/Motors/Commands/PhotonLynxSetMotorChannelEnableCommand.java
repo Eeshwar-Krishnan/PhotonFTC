@@ -14,7 +14,7 @@ import java.nio.ByteBuffer;
 import java.util.concurrent.CompletableFuture;
 
 public class PhotonLynxSetMotorChannelEnableCommand extends LynxSetMotorChannelEnableCommand implements PhotonCommandBase{
-    private CompletableFuture<LynxMessage> future;
+    private final CompletableFuture<LynxMessage> future = new CompletableFuture<>();
 
     @Override
     public void onResponseReceived(LynxMessage response) {
@@ -32,6 +32,16 @@ public class PhotonLynxSetMotorChannelEnableCommand extends LynxSetMotorChannelE
     public void onNackReceived(LynxNack nack) {
         super.onNackReceived(nack);
         future.complete(nack);
+    }
+
+    @Override
+    public void acquireNetworkLock() throws InterruptedException {
+        return;
+    }
+
+    @Override
+    public void releaseNetworkLock() throws InterruptedException {
+        return;
     }
 
     @Override

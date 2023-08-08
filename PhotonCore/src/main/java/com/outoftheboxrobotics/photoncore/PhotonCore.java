@@ -1,35 +1,37 @@
 package com.outoftheboxrobotics.photoncore;
 
-import android.content.Context;
-
-import com.qualcomm.ftccommon.FtcEventLoop;
+import com.outoftheboxrobotics.photoncore.HAL.Motors.Commands.PhotonCommandBase;
+import com.outoftheboxrobotics.photoncore.HAL.Motors.Commands.PhotonLynxGetBulkInputDataCommand;
+import com.outoftheboxrobotics.photoncore.HAL.PhotonHAL;
 import com.qualcomm.hardware.lynx.LynxModule;
-import com.qualcomm.hardware.lynx.commands.LynxRespondable;
-import com.qualcomm.hardware.lynx.commands.LynxResponse;
-import com.qualcomm.robotcore.eventloop.opmode.OpMode;
-import com.qualcomm.robotcore.eventloop.opmode.OpModeManagerImpl;
-import com.qualcomm.robotcore.eventloop.opmode.OpModeManagerNotifier;
-import com.qualcomm.robotcore.hardware.usb.RobotUsbDevice;
+import com.qualcomm.hardware.lynx.LynxNackException;
+import com.qualcomm.hardware.lynx.commands.core.LynxGetBulkInputDataResponse;
+import com.qualcomm.robotcore.hardware.HardwareMap;
+import com.qualcomm.robotcore.hardware.configuration.LynxConstants;
 
-import org.firstinspires.ftc.ftccommon.external.OnCreateEventLoop;
-
-import java.util.HashMap;
-import java.util.List;
-import java.util.concurrent.CompletableFuture;
+import java.util.ArrayList;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 
-public class PhotonCore implements Runnable, OpModeManagerNotifier.Notifications {
+public class PhotonCore implements Runnable {
     protected static final PhotonCore instance = new PhotonCore();
-    protected AtomicBoolean enabled, threadEnabled;
 
-    private HashMap<LynxRespondable, CompletableFuture<LynxResponse>> commandMap;
+    private final ArrayList<PhotonCommandBase> commandList;
 
-    private OpModeManagerImpl opModeManager;
+    private PhotonHAL commandHal = null;
+
+    private LynxGetBulkInputDataResponse commandBulkData = null;
+    private final Object commandLock = new Object();
+    private final Object supplierLock = new Object();
+
+    private final ArrayList<PeriodicSupplier> suppliers;
 
     public static class ExperimentalParameters{
         private final AtomicBoolean singlethreadedOptimized = new AtomicBoolean(true);
         private final AtomicInteger maximumParallelCommands = new AtomicInteger(4);
+        private final AtomicLong bulkDataUpdateMs = new AtomicLong(30);
 
         public void setSinglethreadedOptimized(boolean state){
             this.singlethreadedOptimized.set(state);
@@ -42,61 +44,91 @@ public class PhotonCore implements Runnable, OpModeManagerNotifier.Notifications
             this.maximumParallelCommands.set(maximumParallelCommands);
             return true;
         }
+
+        public void setBulkDataUpdateMs(long updateMs){
+            bulkDataUpdateMs.set(updateMs);
+        }
     }
 
     public static ExperimentalParameters experimental = new ExperimentalParameters();
 
     public PhotonCore(){
-        enabled = new AtomicBoolean(false);
-        threadEnabled = new AtomicBoolean(false);
-        commandMap = new HashMap<>();
+        commandList = new ArrayList<>();
+        suppliers = new ArrayList<>();
     }
 
-    public static void enable(){
-        instance.enabled.set(true);
+    public static PhotonHAL getControlHubHAL(){
+        return instance.commandHal;
     }
 
-    public static void disable(){
-        instance.enabled.set(false);
+    public static LynxGetBulkInputDataResponse getControlData(){
+        synchronized (instance.commandLock){
+            return instance.commandBulkData;
+        }
     }
 
-    @OnCreateEventLoop
-    public static void attachEventLoop(Context context, FtcEventLoop eventLoop) {
-        eventLoop.getOpModeManager().registerListener(instance);
-        instance.opModeManager = eventLoop.getOpModeManager();
-    }
-
-    @Override
-    public void run() {
-        while(threadEnabled.get()){
-            if(enabled.get()){
-                for(LynxRespondable respondable : commandMap.keySet()){
-                    if(respondable.hasBeenAcknowledged()){
-                        
-                    }
+    public static void start(HardwareMap map){
+        for(LynxModule module : map.getAll(LynxModule.class)){
+            if(module.isParent() && module.getSerialNumber() == LynxConstants.SERIAL_NUMBER_EMBEDDED){
+                if(instance.commandHal == null){
+                    instance.commandHal = new PhotonHAL(module);
                 }
             }
-            try {
-                Thread.sleep(5);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
+        }
+        PhotonLynxGetBulkInputDataCommand command = new PhotonLynxGetBulkInputDataCommand(instance.commandHal.getLynxModule());
+        try {
+            instance.commandBulkData = (LynxGetBulkInputDataResponse) command.getResponse().get();
+        } catch (ExecutionException | InterruptedException | LynxNackException e) {
+            e.printStackTrace();
+        }
+        Thread thread = new Thread(instance);
+        thread.start();
+    }
+
+    public static void submit(PhotonCommandBase command){
+        while(instance.commandList.size() > experimental.maximumParallelCommands.get() && PhotonOpmodeWatchdog.getState() > 0);
+        if(PhotonOpmodeWatchdog.getState() > 0){
+            instance.commandList.add(command);
         }
     }
 
     @Override
-    public void onOpModePreInit(OpMode opMode) {
+    public void run() {
+        long timer = System.currentTimeMillis() + experimental.bulkDataUpdateMs.get();
+        AtomicBoolean controlInFlight = new AtomicBoolean(false);
+        while(PhotonOpmodeWatchdog.getState() > 0){
+            synchronized (instance.supplierLock) {
+                for (PeriodicSupplier supplier : suppliers) {
+                    supplier.update();
+                }
+            }
+            if(System.currentTimeMillis() > timer){
+                timer = System.currentTimeMillis() + experimental.bulkDataUpdateMs.get();
+                if(commandHal != null && !controlInFlight.get()){
+                    PhotonLynxGetBulkInputDataCommand command = new PhotonLynxGetBulkInputDataCommand(commandHal.getLynxModule());
+                    try {
+                        command.getResponse().thenApply((response) -> {
+                            synchronized (commandLock) {
+                                commandBulkData = (LynxGetBulkInputDataResponse) response;
+                                controlInFlight.set(false);
+                            }
+                            return 1;
+                        });
+                        commandHal.write(command);
+                        controlInFlight.set(true);
+                    } catch (LynxNackException e) {
+                        e.printStackTrace();
+                    }
+                }
+            }
 
-    }
-
-    @Override
-    public void onOpModePreStart(OpMode opMode) {
-
-    }
-
-    @Override
-    public void onOpModePostStop(OpMode opMode) {
-        enabled.set(false);
-        threadEnabled.set(false);
+            commandList.removeIf((command) -> {
+                try {
+                    return command.getResponse().isDone();
+                } catch (LynxNackException e) {
+                    return true;
+                }
+            });
+        }
     }
 }
