@@ -16,6 +16,7 @@ public class PhotonExample extends LinearOpMode {
         /**
          * Start PhotonCore
          * Required, recommended to be near first in the opmode
+         * Coming soon: Automatically replaces hardware instances with photon hardware instances
          */
         PhotonCore.start(hardwareMap);
 
