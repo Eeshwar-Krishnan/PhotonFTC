@@ -8,16 +8,14 @@ repositories {
 }
 
 android {
-    compileSdkVersion 30
-    buildToolsVersion "30.0.3"
+    compileSdkVersion 29
 
     defaultConfig {
         minSdkVersion 24
-        targetSdkVersion 31
+        //noinspection ExpiredTargetSdkVersion
+        targetSdkVersion 28
         versionCode 1
         versionName "1.0"
-
-        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
     buildTypes {
         release {
@@ -52,6 +50,4 @@ dependencies {
     compileOnly 'org.firstinspires.ftc:FtcCommon:8.2.0'
 
     compileOnly 'org.reflections:reflections:0.10.2'
-    compileOnly 'commons-beanutils:commons-beanutils:1.9.4'
-
 }
