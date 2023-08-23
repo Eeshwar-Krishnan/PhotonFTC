@@ -2,50 +2,51 @@ package com.outoftheboxrobotics.photoncore;
 
 import android.content.Context;
 
-import com.outoftheboxrobotics.photoncore.HAL.Motors.Commands.PhotonCommandBase;
-import com.outoftheboxrobotics.photoncore.HAL.Motors.Commands.PhotonLynxGetBulkInputDataCommand;
-import com.outoftheboxrobotics.photoncore.HAL.PhotonHAL;
-import com.outoftheboxrobotics.photoncore.hardware.PhotonLynxDcMotorController;
 import com.outoftheboxrobotics.photoncore.hardware.PhotonLynxModule;
-import com.outoftheboxrobotics.photoncore.hardware.PhotonLynxServoController;
 import com.outoftheboxrobotics.photoncore.hardware.PhotonLynxVoltageSensor;
+import com.outoftheboxrobotics.photoncore.hardware.i2c.PhotonI2cDeviceSynch;
+import com.outoftheboxrobotics.photoncore.hardware.i2c.PhotonLynxI2cDeviceSynchV1;
+import com.outoftheboxrobotics.photoncore.hardware.i2c.PhotonLynxI2cDeviceSynchV2;
+import com.outoftheboxrobotics.photoncore.hardware.i2c.imu.PhotonBNO055IMUNew;
+import com.outoftheboxrobotics.photoncore.hardware.motor.PhotonDcMotor;
+import com.outoftheboxrobotics.photoncore.hardware.motor.PhotonLynxDcMotorController;
+import com.outoftheboxrobotics.photoncore.hardware.servo.PhotonCRServo;
+import com.outoftheboxrobotics.photoncore.hardware.servo.PhotonLynxServoController;
+import com.outoftheboxrobotics.photoncore.hardware.servo.PhotonServo;
 import com.qualcomm.ftccommon.FtcEventLoop;
+import com.qualcomm.hardware.bosch.BNO055IMUNew;
 import com.qualcomm.hardware.lynx.LynxController;
 import com.qualcomm.hardware.lynx.LynxDcMotorController;
+import com.qualcomm.hardware.lynx.LynxI2cDeviceSynchV1;
 import com.qualcomm.hardware.lynx.LynxModule;
-import com.qualcomm.hardware.lynx.LynxNackException;
 import com.qualcomm.hardware.lynx.LynxServoController;
 import com.qualcomm.hardware.lynx.LynxUsbDevice;
 import com.qualcomm.hardware.lynx.LynxVoltageSensor;
-import com.qualcomm.hardware.lynx.commands.core.LynxGetBulkInputDataResponse;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.eventloop.opmode.OpModeManager;
 import com.qualcomm.robotcore.eventloop.opmode.OpModeManagerImpl;
 import com.qualcomm.robotcore.eventloop.opmode.OpModeManagerNotifier;
 import com.qualcomm.robotcore.exception.RobotCoreException;
+import com.qualcomm.robotcore.hardware.CRServo;
+import com.qualcomm.robotcore.hardware.CRServoImpl;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorImpl;
 import com.qualcomm.robotcore.hardware.HardwareDevice;
 import com.qualcomm.robotcore.hardware.HardwareMap;
+import com.qualcomm.robotcore.hardware.I2cDeviceSynchDeviceWithParameters;
 import com.qualcomm.robotcore.hardware.Servo;
 import com.qualcomm.robotcore.hardware.ServoImpl;
-import com.qualcomm.robotcore.hardware.configuration.LynxConstants;
 import com.qualcomm.robotcore.util.RobotLog;
 
 import org.firstinspires.ftc.ftccommon.external.OnCreateEventLoop;
 
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicLong;
 
-public class PhotonCore implements Runnable, OpModeManagerNotifier.Notifications {
+public class PhotonCore implements OpModeManagerNotifier.Notifications {
     // Configuration and singleton values
     private static final String TAG = "PhotonCore";
     private static final PhotonCore instance = new PhotonCore();
@@ -53,76 +54,6 @@ public class PhotonCore implements Runnable, OpModeManagerNotifier.Notifications
     public static Photon photon;
 
     private OpModeManagerImpl opModeManager;
-
-    private final ArrayList<PhotonCommandBase> commandList;
-
-    private PhotonHAL commandHal = null;
-
-    private LynxGetBulkInputDataResponse commandBulkData = null;
-    private final Object commandLock = new Object();
-    private final Object supplierLock = new Object();
-
-    private final ArrayList<PeriodicSupplier> suppliers;
-
-    public PhotonCore(){
-        commandList = new ArrayList<>();
-        suppliers = new ArrayList<>();
-    }
-
-    public static PhotonHAL getControlHubHAL(){
-        return instance.commandHal;
-    }
-
-    public static LynxGetBulkInputDataResponse getControlData() {
-        synchronized (instance.commandLock) {
-            return instance.commandBulkData;
-        }
-    }
-
-    public static void start(HardwareMap map){
-        for(LynxModule module : map.getAll(LynxModule.class)){
-            if(module.isParent() && module.getSerialNumber() == LynxConstants.SERIAL_NUMBER_EMBEDDED){
-                if(instance.commandHal == null){
-                    instance.commandHal = new PhotonHAL(module);
-                }
-            }
-        }
-        PhotonLynxGetBulkInputDataCommand command = new PhotonLynxGetBulkInputDataCommand(instance.commandHal.getLynxModule());
-        try {
-            instance.commandBulkData = (LynxGetBulkInputDataResponse) command.getResponse().get();
-        } catch (ExecutionException | InterruptedException | LynxNackException e) {
-            e.printStackTrace();
-        }
-        Thread thread = new Thread(instance);
-        thread.start();
-    }
-
-    public static void submit(PhotonCommandBase command){
-        while(instance.commandList.size() > photon.maximumParallelCommands() && PhotonOpmodeWatchdog.getState() > 0);
-        if(PhotonOpmodeWatchdog.getState() > 0){
-            instance.commandList.add(command);
-        }
-    }
-
-    @Override
-    public void run() {
-        AtomicBoolean controlInFlight = new AtomicBoolean(false);
-        while(PhotonOpmodeWatchdog.getState() > 0){
-            synchronized (instance.supplierLock) {
-                for (PeriodicSupplier supplier : suppliers) {
-                    supplier.update();
-                }
-            }
-            commandList.removeIf((command) -> {
-                try {
-                    return command.getResponse().isDone();
-                } catch (LynxNackException e) {
-                    return true;
-                }
-            });
-        }
-    }
-
 
     @SuppressWarnings({"unused"})
     @OnCreateEventLoop
@@ -166,7 +97,6 @@ public class PhotonCore implements Runnable, OpModeManagerNotifier.Notifications
                 PhotonLynxModule photonLynxModule = PhotonLynxModule.fromLynxModule(lynxModule);
                 assert photonLynxModule!=null;
 
-
                 // In order to swap xxx-LynxModules we need to re-link the LynxUsbDevice with the
                 // PhotonLynxModule
                 LynxUsbDevice lynxUsbDevice =photonLynxModule.getLynxUsbDevice().getDelegationTarget();
@@ -200,44 +130,68 @@ public class PhotonCore implements Runnable, OpModeManagerNotifier.Notifications
 
                 // Get the LynxModule currently used by the Controller
                 LynxModule usedModule = ReflectionUtils.getFieldValue(device, "module");
+                if(!(usedModule instanceof PhotonLynxModule))
+                {
+                    usedModule=replacements.get(usedModule);
+                }
 
 
                 // We now swap every controller we have a optimized implementation for, catering to
                 // the needs of each controller
 
-                if(device instanceof LynxDcMotorController)
+                if(device instanceof LynxDcMotorController && !(device instanceof PhotonLynxDcMotorController))
                 {
                     try {
-                        PhotonLynxDcMotorController PhotonLynxDcMotorController = new PhotonLynxDcMotorController(null, usedModule);
+                        PhotonLynxDcMotorController photonLynxDcMotorController = new PhotonLynxDcMotorController((PhotonLynxModule) usedModule);
                         hardwareMap.remove(deviceName, device);
-                        hardwareMap.put(deviceName, PhotonLynxDcMotorController);
+                        hardwareMap.dcMotorController.remove(deviceName);
+                        hardwareMap.dcMotorController.put(deviceName, photonLynxDcMotorController);
+                        hardwareMap.put(deviceName, photonLynxDcMotorController);
                         for(DcMotor motor:hardwareMap.getAll(DcMotorImpl.class))
                         {
-                            LynxDcMotorController controller = ReflectionUtils.getFieldValue(motor, "controller");
-                            if(device.equals(controller))
-                                ReflectionUtils.setFieldValue(motor, PhotonLynxDcMotorController, "controller");
+                            String motorName = Objects.requireNonNull(deviceNames.get(motor)).iterator().next();
+                            hardwareMap.remove(motorName, motor);
+                            hardwareMap.dcMotor.remove(motorName);
+
+                            PhotonDcMotor photonDcMotor = new PhotonDcMotor(photonLynxDcMotorController, motor.getPortNumber());
+                            hardwareMap.dcMotor.put(motorName, photonDcMotor);
+                            hardwareMap.put(motorName, photonDcMotor);
                         }
-                        device=PhotonLynxDcMotorController;
+
+                        device=photonLynxDcMotorController;
                     } catch (RobotCoreException | InterruptedException ignored) {
 
                     }
 
                 }
-                if(device instanceof LynxServoController)
+                if(device instanceof LynxServoController && !(device instanceof PhotonLynxServoController))
                 {
+
                     try {
-                        PhotonLynxServoController PhotonLynxServoController = new PhotonLynxServoController(null, usedModule);
+                        PhotonLynxServoController photonLynxServoController = new PhotonLynxServoController((PhotonLynxModule) usedModule);
                         hardwareMap.remove(deviceName, device);
-                        hardwareMap.put(deviceName, PhotonLynxServoController);
+                        hardwareMap.servoController.remove(deviceName);
+                        hardwareMap.put(deviceName, photonLynxServoController);
+                        hardwareMap.servoController.put(deviceName, photonLynxServoController);
                         for(Servo servo:hardwareMap.getAll(ServoImpl.class))
                         {
-                            LynxServoController controller =ReflectionUtils.getFieldValue(servo, "controller");
-                            if(device.equals(controller))
-                            {
-                                ReflectionUtils.setFieldValue(servo, PhotonLynxServoController, "controller");
-                            }
+                            String servoName=Objects.requireNonNull(deviceNames.get(servo)).iterator().next();
+                            hardwareMap.remove(servoName, servo);
+                            hardwareMap.servo.remove(servoName);
+                            PhotonServo photonServo = new PhotonServo(photonLynxServoController, servo.getPortNumber());
+                            hardwareMap.put(servoName, photonServo);
+                            hardwareMap.servo.put(servoName, photonServo);
                         }
-                        device=PhotonLynxServoController;
+                        for(CRServo servo:hardwareMap.getAll(CRServoImpl.class))
+                        {
+                            String servoName=Objects.requireNonNull(deviceNames.get(servo)).iterator().next();
+                            hardwareMap.remove(servoName, servo);
+                            hardwareMap.crservo.remove(servoName);
+                            PhotonCRServo photonServo = new PhotonCRServo(photonLynxServoController, servo.getPortNumber());
+                            hardwareMap.put(servoName, photonServo);
+                            hardwareMap.crservo.put(servoName, photonServo);
+                        }
+                        device=photonLynxServoController;
                     } catch (RobotCoreException | InterruptedException ignored) {
 
                     }
@@ -246,14 +200,14 @@ public class PhotonCore implements Runnable, OpModeManagerNotifier.Notifications
                 if(device instanceof LynxVoltageSensor)
                 {
                     try {
-                        PhotonLynxVoltageSensor PhotonLynxVoltageSensor=new PhotonLynxVoltageSensor(null, usedModule);
+                        PhotonLynxVoltageSensor photonLynxVoltageSensor=new PhotonLynxVoltageSensor(null, usedModule);
                         hardwareMap.remove(deviceName, device);
-                        hardwareMap.put(deviceName, PhotonLynxVoltageSensor);
-                        device=PhotonLynxVoltageSensor;
+                        hardwareMap.put(deviceName, photonLynxVoltageSensor);
+                        device=photonLynxVoltageSensor;
 
                         // Bad hardware map architecture means we must babysit the separate values
                         hardwareMap.voltageSensor.remove(deviceName);
-                        hardwareMap.voltageSensor.put(deviceName, PhotonLynxVoltageSensor);
+                        hardwareMap.voltageSensor.put(deviceName, photonLynxVoltageSensor);
                     } catch (RobotCoreException | InterruptedException ignored) {
                     }
 
@@ -262,10 +216,43 @@ public class PhotonCore implements Runnable, OpModeManagerNotifier.Notifications
 
                 // We don't have this immediately after getting the used module, so we can benefit
                 // from "free" recreations of hardware
-                if(usedModule instanceof PhotonLynxModule) continue;
 
 
-                ReflectionUtils.setFieldValue(device, replacements.get(usedModule), "module");
+
+                ReflectionUtils.setFieldValue(device, usedModule, "module");
+            }
+
+            // I2C devices
+            for(I2cDeviceSynchDeviceWithParameters device: hardwareMap.getAll(I2cDeviceSynchDeviceWithParameters.class))
+            {
+                String deviceName=Objects.requireNonNull(deviceNames.get(device)).iterator().next();
+                String deviceClientName=Objects.requireNonNull(deviceNames.get(device.getDeviceClient())).iterator().next();
+
+                // Get the LynxModule currently used by the I2C device
+                LynxModule usedModule = ReflectionUtils.getFieldValue(device.getDeviceClient(), "module");
+                if(!(usedModule instanceof PhotonLynxModule))
+                {
+                    usedModule=replacements.get(usedModule);
+                }
+
+                if(device instanceof BNO055IMUNew&& !(device instanceof PhotonBNO055IMUNew))
+                {
+                    Integer bus = ReflectionUtils.getFieldValue(device.getDeviceClient(), "bus");
+                    PhotonI2cDeviceSynch deviceClient;
+                    if(device.getDeviceClient() instanceof LynxI2cDeviceSynchV1)
+                    {
+                        deviceClient=new PhotonLynxI2cDeviceSynchV1((PhotonLynxModule) usedModule, bus);
+                    }else
+                    {
+                        deviceClient=new PhotonLynxI2cDeviceSynchV2((PhotonLynxModule) usedModule, bus);
+                    }
+                    PhotonBNO055IMUNew photonBNO055IMUNew = new PhotonBNO055IMUNew(deviceClient, true);
+                    hardwareMap.remove(deviceName,device);
+                    hardwareMap.put(deviceName, photonBNO055IMUNew);
+                }
+                // TODO: The rest of the i2c devices
+
+                ReflectionUtils.setFieldValue(device.getDeviceClient(), usedModule, "module");
             }
         }
     }

@@ -1,6 +1,6 @@
 package com.outoftheboxrobotics.photoncore.Examples;
 
-import com.outoftheboxrobotics.photoncore.HAL.Motors.PhotonDcMotor;
+import com.outoftheboxrobotics.photoncore.hardware.motor.PhotonDcMotor;
 import com.outoftheboxrobotics.photoncore.PeriodicSupplier;
 import com.outoftheboxrobotics.photoncore.Photon;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
