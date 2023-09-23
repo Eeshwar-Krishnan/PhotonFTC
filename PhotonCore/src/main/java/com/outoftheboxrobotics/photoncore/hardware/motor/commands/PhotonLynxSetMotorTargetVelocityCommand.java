@@ -3,6 +3,7 @@ package com.outoftheboxrobotics.photoncore.hardware.motor.commands;
 import com.outoftheboxrobotics.photoncore.PhotonCommandBase;
 import com.qualcomm.hardware.lynx.LynxModuleIntf;
 import com.qualcomm.hardware.lynx.LynxNackException;
+import com.qualcomm.hardware.lynx.commands.LynxInterface;
 import com.qualcomm.hardware.lynx.commands.LynxMessage;
 import com.qualcomm.hardware.lynx.commands.core.LynxSetMotorTargetVelocityCommand;
 import com.qualcomm.hardware.lynx.commands.standard.LynxAck;
@@ -32,13 +33,12 @@ public class PhotonLynxSetMotorTargetVelocityCommand extends LynxSetMotorTargetV
     }
 
     @Override
-    public void acquireNetworkLock() throws InterruptedException {
-        return;
-    }
+    public int getCommandNumber() {
+        LynxInterface theInterface = this.getInterface();
+        if (null == theInterface)
+            return LynxInterface.ERRONEOUS_COMMAND_NUMBER;   // should never happen in working system, but might if pretending
 
-    @Override
-    public void releaseNetworkLock() throws InterruptedException {
-        return;
+        return theInterface.getBaseCommandNumber() + 17;
     }
 
     public PhotonLynxSetMotorTargetVelocityCommand(LynxModuleIntf module, int motorZ, int velocity) {
@@ -46,7 +46,8 @@ public class PhotonLynxSetMotorTargetVelocityCommand extends LynxSetMotorTargetV
     }
 
     @Override
-    public CompletableFuture<LynxMessage> getResponse() throws LynxNackException {
+    public CompletableFuture<LynxMessage> getResponse() {
         return null;
     }
+
 }

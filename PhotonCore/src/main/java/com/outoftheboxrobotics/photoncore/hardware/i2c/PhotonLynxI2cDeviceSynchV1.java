@@ -26,19 +26,20 @@ public class PhotonLynxI2cDeviceSynchV1 extends LynxI2cDeviceSynchV1 implements 
         super(null, module, bus);
     }
     private PhotonCommandBase<? extends LynxMessage> interleavedCommand = null;
-    private CompletableFuture<? extends LynxMessage> future=null;
+    private LynxMessage result=null;
     @Override
     public void scheduleInterleavedCommand(PhotonCommandBase<? extends LynxMessage> command) {
         interleavedCommand=command;
     }
 
     @Override
-    public CompletableFuture<? extends LynxMessage> getResponse() {
-        return future;
+    public LynxMessage getResult() {
+        return result;
     }
 
-    private TimestampedCompletableFuture<? extends LynxMessage> readInterleaved(int ireg, int creg)
-    {
+    @Override
+    public synchronized TimestampedData readTimeStamped(int ireg, int creg) {
+        if(PhotonCore.photon==null) return super.readTimeStamped(ireg, creg);
         try {
             final Supplier<LynxI2cWriteSingleByteCommand> writeTxSupplier = () -> new LynxI2cWriteSingleByteCommand(getModule(), bus, i2cAddr, ireg);
 
@@ -56,44 +57,11 @@ public class PhotonLynxI2cDeviceSynchV1 extends LynxI2cDeviceSynchV1 implements 
                 sendI2cTransaction(writeTxSupplier);
                 internalWaitForWriteCompletions(I2cWaitControl.ATOMIC);
                 sendI2cTransaction(readTxSupplier);
-                interleavedCommand.send();
-
-                readTimeStampedPlaceholder.reset();
-                TimestampedData data = pollForReadResult(i2cAddr, ireg, creg);
-                return new TimestampedCompletableFuture<>(data, interleavedCommand.getResponse());
-            });
-        } catch (InterruptedException|RobotCoreException|RuntimeException e) {
-            handleException(e);
-        } catch (LynxNackException e) {
-            /*
-             * This is a possible device problem, go ahead and tell I2cWarningManager to warn.
-             */
-            I2cWarningManager.notifyProblemI2cDevice(this);
-            handleException(e);
-        }
-        return new TimestampedCompletableFuture<>(readTimeStampedPlaceholder.log(TimestampedI2cData.makeFakeData(getI2cAddress(), ireg, creg)),null);
-    }
-    private synchronized TimestampedData readUnscheduled(int ireg, int creg)
-    {
-        try {
-            final Supplier<LynxI2cWriteSingleByteCommand> writeTxSupplier = () -> new LynxI2cWriteSingleByteCommand(getModule(), bus, i2cAddr, ireg);
-
-            final Supplier<LynxCommand<?>> readTxSupplier = () -> {
-                /*
-                 * LynxI2cReadMultipleBytesCommand does not support a
-                 * byte count of one, so we manually differentiate here.
-                 */
-                return creg==1
-                        ? new LynxI2cReadSingleByteCommand(getModule(), bus, i2cAddr)
-                        : new LynxI2cReadMultipleBytesCommand(getModule(), bus, i2cAddr, creg);
-            };
-
-            return acquireI2cLockWhile(() -> {
-                sendI2cTransaction(writeTxSupplier);
-                internalWaitForWriteCompletions(I2cWaitControl.ATOMIC);
-                sendI2cTransaction(readTxSupplier);
-                Thread.sleep(2); // TODO: Check this
-
+                if(PhotonCore.photon!=null&&interleavedCommand!=null)
+                {
+                    result=interleavedCommand.sendReceive();
+                    interleavedCommand=null;
+                }
                 readTimeStampedPlaceholder.reset();
                 return pollForReadResult(i2cAddr, ireg, creg);
             });
@@ -108,27 +76,5 @@ public class PhotonLynxI2cDeviceSynchV1 extends LynxI2cDeviceSynchV1 implements 
         }
         return readTimeStampedPlaceholder.log(TimestampedI2cData.makeFakeData(getI2cAddress(), ireg, creg));
     }
-    @Override
-    public synchronized TimestampedData readTimeStamped(int ireg, int creg) {
-        if(PhotonCore.photon==null) return super.readTimeStamped(ireg, creg);
 
-        if(interleavedCommand==null)
-        {
-            return readUnscheduled(ireg, creg);
-        }else {
-            TimestampedCompletableFuture<? extends LynxMessage> data=readInterleaved(ireg, creg);
-            future=data.future;
-            return data.timestampedData;
-        }
-    }
-    ExecutorService readTimeStampedAsyncExecutor = Executors.newSingleThreadExecutor();
-    @Override
-    public CompletableFuture<TimestampedData> readTimeStampedAsync(int ireg, int creg) {
-        CompletableFuture<TimestampedData> dataCompletableFuture = new CompletableFuture<>();
-        readTimeStampedAsyncExecutor.submit(()->{
-            dataCompletableFuture.complete(readTimeStamped(ireg,creg));
-        });
-        return dataCompletableFuture;
-
-    }
 }

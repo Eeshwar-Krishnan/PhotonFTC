@@ -3,6 +3,7 @@ package com.outoftheboxrobotics.photoncore.hardware.servo;
 import androidx.annotation.NonNull;
 
 import com.outoftheboxrobotics.photoncore.PhotonCore;
+import com.outoftheboxrobotics.photoncore.PhotonLastKnown;
 import com.outoftheboxrobotics.photoncore.hardware.PhotonLynxModule;
 import com.outoftheboxrobotics.photoncore.hardware.servo.commands.PhotonLynxGetServoEnableCommand;
 import com.outoftheboxrobotics.photoncore.hardware.servo.commands.PhotonLynxGetServoPulseWidthCommand;
@@ -19,16 +20,18 @@ import com.qualcomm.robotcore.exception.RobotCoreException;
 import com.qualcomm.robotcore.hardware.PwmControl;
 import com.qualcomm.robotcore.hardware.configuration.LynxConstants;
 import com.qualcomm.robotcore.hardware.configuration.typecontainers.ServoConfigurationType;
-import com.qualcomm.robotcore.util.LastKnown;
 import com.qualcomm.robotcore.util.Range;
 
 import java.util.concurrent.CompletableFuture;
 
 public class PhotonLynxServoController extends LynxServoController implements PhotonServoController{
-    private final PhotonLynxModule module;
     public PhotonLynxServoController(PhotonLynxModule module) throws RobotCoreException, InterruptedException {
         super(null, module);
-        this.module=module;
+    }
+
+    @Override
+    protected void doHook() {
+        servoProperties=createPropertiesArray();
     }
 
     @Override
@@ -41,19 +44,22 @@ public class PhotonLynxServoController extends LynxServoController implements Ph
     }
 
     private static class ServoProperties {
-        public LastKnown<Double> lastKnownPosition = new LastKnown<>(Double.MAX_VALUE);
-        public LastKnown<PwmControl.PwmRange> lastKnownRange = new LastKnown<>(Double.MAX_VALUE);
-        public LastKnown<Boolean> lastKnownEnable = new LastKnown<>(Double.MAX_VALUE);
+        public PhotonLastKnown<Double> lastKnownPosition = new PhotonLastKnown<>(false);
+        public PhotonLastKnown<PwmControl.PwmRange> lastKnownRange = new PhotonLastKnown<>(false);
+        public PhotonLastKnown<Boolean> lastKnownEnable = new PhotonLastKnown<>(false);
     }
-    @SuppressWarnings("MismatchedReadAndWriteOfArray")
-    private final ServoProperties[] servoProperties = new ServoProperties[LynxConstants.NUMBER_OF_SERVO_CHANNELS];
-
-
+    private static ServoProperties[] createPropertiesArray()
+    {
+        ServoProperties[] properties  = new ServoProperties[LynxConstants.NUMBER_OF_SERVO_CHANNELS];
+        for(int i = 0; i< LynxConstants.NUMBER_OF_SERVO_CHANNELS; i++) properties[i]= new ServoProperties();
+        return properties;
+    }
+    private ServoProperties[] servoProperties;
     @Override
     public void forgetLastKnown() {
-        super.forgetLastKnown();
+        
         for (ServoProperties property :
-                servoProperties) {
+            servoProperties) {
             property.lastKnownPosition.invalidate();
             property.lastKnownEnable.invalidate();
             property.lastKnownRange.invalidate();
@@ -61,7 +67,8 @@ public class PhotonLynxServoController extends LynxServoController implements Ph
     }
 
     @Override
-    public  void pwmEnable() {
+    public void pwmEnable() {
+        
         for (int servoZ = 0; servoZ < LynxConstants.NUMBER_OF_SERVO_CHANNELS; servoZ++)
         {
             internalSetPwmEnable(servoZ, true);
@@ -69,7 +76,8 @@ public class PhotonLynxServoController extends LynxServoController implements Ph
     }
 
     @Override
-    public  void pwmDisable() {
+    public void pwmDisable() {
+        
         for (int servoZ = 0; servoZ < LynxConstants.NUMBER_OF_SERVO_CHANNELS; servoZ++)
         {
             internalSetPwmEnable(servoZ, false);
@@ -77,6 +85,7 @@ public class PhotonLynxServoController extends LynxServoController implements Ph
     }
     private void internalSetPwmEnable(int servoZ, boolean enable)
     {
+        
         // Don't change state if we know we are already there
         if (servoProperties[servoZ].lastKnownEnable.updateValue(enable))
         {
@@ -97,7 +106,8 @@ public class PhotonLynxServoController extends LynxServoController implements Ph
         }
     }
     @Override
-    public  void setServoPwmEnable(int servo) {
+    public void setServoPwmEnable(int servo) {
+        
         if(PhotonCore.photon==null) {
             super.setServoPwmEnable(servo);
             return;
@@ -106,7 +116,8 @@ public class PhotonLynxServoController extends LynxServoController implements Ph
     }
 
     @Override
-    public  void setServoPwmDisable(int servo) {
+    public void setServoPwmDisable(int servo) {
+        
         if(PhotonCore.photon==null) {
             super.setServoPwmEnable(servo);
             return;
@@ -116,10 +127,11 @@ public class PhotonLynxServoController extends LynxServoController implements Ph
 
     @Override
     public CompletableFuture<Boolean> isServoPwmEnabledAsync(int servo) {
+        
         if(servoProperties[servo].lastKnownEnable.isValid()) {
             return CompletableFuture.completedFuture(servoProperties[servo].lastKnownEnable.getValue());
         } else {
-            PhotonLynxGetServoEnableCommand command = new PhotonLynxGetServoEnableCommand(module, servo);
+            PhotonLynxGetServoEnableCommand command = new PhotonLynxGetServoEnableCommand(getModule(), servo);
             try {
                 command.send();
                 return command.getResponse().thenApply(message -> {
@@ -137,6 +149,7 @@ public class PhotonLynxServoController extends LynxServoController implements Ph
 
     @Override
     public  boolean isServoPwmEnabled(int servo) {
+        
         if(PhotonCore.photon==null) { super.isServoPwmEnabled(servo); }
         return isServoPwmEnabledAsync(servo).join();
     }
@@ -147,19 +160,20 @@ public class PhotonLynxServoController extends LynxServoController implements Ph
     }
 
     @Override
-    public  void setServoPosition(int servo, double position) {
+    public void setServoPosition(int servo, double position) {
+        
         if( PhotonCore.photon==null) {
             super.setServoPosition(servo, position);
             return;
         }
         position=Range.clip(position, apiPositionFirst, apiPositionLast);
-        if (servoProperties[servo].lastKnownPosition.updateValue(position))
+        if (servoProperties[servo].lastKnownPosition.updateValue(position)||PhotonCore.photon.consistentLoopTimes())
         {
-            double pwm = Range.scale(position, apiPositionFirst, apiPositionLast, pwmRanges[servo].usPulseLower, pwmRanges[servo].usPulseUpper);
+            double pwm = Range.scale(position, apiPositionFirst, apiPositionLast, servoProperties[servo].lastKnownRange.getValue().usPulseLower, servoProperties[servo].lastKnownRange.getValue().usPulseUpper);
             pwm = Range.clip(pwm, LynxSetServoPulseWidthCommand.apiPulseWidthFirst, LynxSetServoPulseWidthCommand.apiPulseWidthLast);
             LynxSetServoPulseWidthCommand command = new LynxSetServoPulseWidthCommand(this.getModule(), servo, (int)pwm);
             try {
-                module.sendCommand(command);
+                getModule().sendCommand(command);
             }
             catch (InterruptedException | RuntimeException | LynxUnsupportedCommandException e)
             {
@@ -172,17 +186,17 @@ public class PhotonLynxServoController extends LynxServoController implements Ph
 
     @Override
     public CompletableFuture<Double> getServoPositionAsync(int servo) {
-
+        
         if(servoProperties[servo].lastKnownPosition.isValid())
         {
             return CompletableFuture.completedFuture(servoProperties[servo].lastKnownPosition.getValue());
         }else {
-            PhotonLynxGetServoPulseWidthCommand command = new PhotonLynxGetServoPulseWidthCommand(module, servo);
+            PhotonLynxGetServoPulseWidthCommand command = new PhotonLynxGetServoPulseWidthCommand(getModule(), servo);
             try {
                 command.send();
                 return command.getResponse().thenApply(message -> {
                     LynxGetServoPulseWidthResponse response = (LynxGetServoPulseWidthResponse) message;
-                    double position = Range.scale(response.getPulseWidth(), pwmRanges[servo].usPulseLower, pwmRanges[servo].usPulseUpper, apiPositionFirst, apiPositionLast);
+                    double position = Range.scale(response.getPulseWidth(), servoProperties[servo].lastKnownRange.getValue().usPulseLower, servoProperties[servo].lastKnownRange.getValue().usPulseUpper, apiPositionFirst, apiPositionLast);
                     servoProperties[servo].lastKnownPosition.setValue(position);
                     return position;
                 });
@@ -195,12 +209,14 @@ public class PhotonLynxServoController extends LynxServoController implements Ph
 
     @Override
     public  double getServoPosition(int servo) {
+        
         if(PhotonCore.photon==null) return super.getServoPosition(servo);
         return getServoPositionAsync(servo).join();
     }
 
     @Override
     public  void setServoPwmRange(int servo, @NonNull PwmControl.PwmRange range) {
+        
         if(PhotonCore.photon==null){
             super.setServoPwmRange(servo, range);
             return;
@@ -220,6 +236,7 @@ public class PhotonLynxServoController extends LynxServoController implements Ph
 
     @Override
     public CompletableFuture<PwmControl.PwmRange> getServoPwmRangeAsync(int servo) {
+        
         return CompletableFuture.completedFuture(servoProperties[servo].lastKnownRange.getValue());
         // Apparently it's literally impossible to get the actual range from the hardware so.... pray
     }
@@ -227,6 +244,7 @@ public class PhotonLynxServoController extends LynxServoController implements Ph
     @NonNull
     @Override
     public  PwmControl.PwmRange getServoPwmRange(int servo) {
+        
         if(PhotonCore.photon==null) return super.getServoPwmRange(servo);
         return getServoPwmRangeAsync(servo).join();
     }

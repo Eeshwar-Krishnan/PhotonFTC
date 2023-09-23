@@ -3,6 +3,7 @@ package com.outoftheboxrobotics.photoncore.hardware.motor.commands;
 import com.outoftheboxrobotics.photoncore.PhotonCommandBase;
 import com.qualcomm.hardware.lynx.LynxModuleIntf;
 import com.qualcomm.hardware.lynx.LynxNackException;
+import com.qualcomm.hardware.lynx.commands.LynxInterface;
 import com.qualcomm.hardware.lynx.commands.LynxMessage;
 import com.qualcomm.hardware.lynx.commands.core.LynxGetMotorConstantPowerCommand;
 import com.qualcomm.hardware.lynx.commands.standard.LynxAck;
@@ -36,7 +37,15 @@ public class PhotonLynxGetMotorConstantPowerCommand extends LynxGetMotorConstant
     }
 
     @Override
-    public CompletableFuture<LynxMessage> getResponse() throws LynxNackException {
+    public CompletableFuture<LynxMessage> getResponse() {
         return future;
+    }
+    @Override
+    public int getCommandNumber() {
+        LynxInterface theInterface = this.getInterface();
+        if (null == theInterface)
+            return LynxInterface.ERRONEOUS_COMMAND_NUMBER;   // should never happen in working system, but might if pretending
+
+        return theInterface.getBaseCommandNumber() + 16;
     }
 }

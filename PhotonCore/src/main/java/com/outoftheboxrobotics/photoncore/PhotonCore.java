@@ -7,6 +7,7 @@ import com.outoftheboxrobotics.photoncore.hardware.PhotonLynxVoltageSensor;
 import com.outoftheboxrobotics.photoncore.hardware.i2c.PhotonI2cDeviceSynch;
 import com.outoftheboxrobotics.photoncore.hardware.i2c.PhotonLynxI2cDeviceSynchV1;
 import com.outoftheboxrobotics.photoncore.hardware.i2c.PhotonLynxI2cDeviceSynchV2;
+import com.outoftheboxrobotics.photoncore.hardware.i2c.imu.PhotonBHI260IMU;
 import com.outoftheboxrobotics.photoncore.hardware.i2c.imu.PhotonBNO055IMUNew;
 import com.outoftheboxrobotics.photoncore.hardware.motor.PhotonDcMotor;
 import com.outoftheboxrobotics.photoncore.hardware.motor.PhotonLynxDcMotorController;
@@ -14,6 +15,7 @@ import com.outoftheboxrobotics.photoncore.hardware.servo.PhotonCRServo;
 import com.outoftheboxrobotics.photoncore.hardware.servo.PhotonLynxServoController;
 import com.outoftheboxrobotics.photoncore.hardware.servo.PhotonServo;
 import com.qualcomm.ftccommon.FtcEventLoop;
+import com.qualcomm.hardware.bosch.BHI260IMU;
 import com.qualcomm.hardware.bosch.BNO055IMUNew;
 import com.qualcomm.hardware.lynx.LynxController;
 import com.qualcomm.hardware.lynx.LynxDcMotorController;
@@ -35,12 +37,12 @@ import com.qualcomm.robotcore.hardware.HardwareDevice;
 import com.qualcomm.robotcore.hardware.HardwareMap;
 import com.qualcomm.robotcore.hardware.I2cDeviceSynchDeviceWithParameters;
 import com.qualcomm.robotcore.hardware.Servo;
-import com.qualcomm.robotcore.hardware.ServoImpl;
 import com.qualcomm.robotcore.util.RobotLog;
 
 import org.firstinspires.ftc.ftccommon.external.OnCreateEventLoop;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -107,22 +109,20 @@ public class PhotonCore implements OpModeManagerNotifier.Notifications {
                 // the same thing, we need to use reflection
                 ConcurrentHashMap<Integer, LynxModule> knownModules = (ReflectionUtils.getFieldValue(lynxUsbDevice, "knownModules"));
                 assert knownModules != null;
+
                 knownModules.put(photonLynxModule.getModuleAddress(), photonLynxModule);
 
 
                 // Record the replacement
                 replacements.put(lynxModule, photonLynxModule);
-
-
                 // Swap the modules in the hardware map
                 hardwareMap.remove(deviceName, lynxModule);
                 hardwareMap.put(deviceName, photonLynxModule);
 
-                photonLynxModule.setBulkCachingMode(LynxModule.BulkCachingMode.AUTO);
             }
 
-            // Since the standard architecture is HardwareDevice(e.g. Motor) <-> LynxController <-> LynxModule,
-            // we first swap in the LynxControllers, followed by the HardwareDevices on a per LynxController basis
+            //   Since the standard architecture is HardwareDevice(e.g. Motor) <-> LynxController <-> LynxModule,
+            //   we first swap in the LynxControllers, followed by the HardwareDevices on a per LynxController basis
             for(LynxController device : hardwareMap.getAll(LynxController.class))
             {
                 String deviceName=Objects.requireNonNull(deviceNames.get(device)).iterator().next();
@@ -147,15 +147,20 @@ public class PhotonCore implements OpModeManagerNotifier.Notifications {
                         hardwareMap.dcMotorController.remove(deviceName);
                         hardwareMap.dcMotorController.put(deviceName, photonLynxDcMotorController);
                         hardwareMap.put(deviceName, photonLynxDcMotorController);
-                        for(DcMotor motor:hardwareMap.getAll(DcMotorImpl.class))
+                        List<DcMotor> motors = hardwareMap.getAll(DcMotorImpl.class);
+                        for(DcMotor motor:motors)
                         {
-                            String motorName = Objects.requireNonNull(deviceNames.get(motor)).iterator().next();
-                            hardwareMap.remove(motorName, motor);
-                            hardwareMap.dcMotor.remove(motorName);
+                            if(motor.getController()==device)
+                            {
+                                String motorName = Objects.requireNonNull(deviceNames.get(motor)).iterator().next();
+                                hardwareMap.remove(motorName, motor);
+                                hardwareMap.dcMotor.remove(motorName);
 
-                            PhotonDcMotor photonDcMotor = new PhotonDcMotor(photonLynxDcMotorController, motor.getPortNumber());
-                            hardwareMap.dcMotor.put(motorName, photonDcMotor);
-                            hardwareMap.put(motorName, photonDcMotor);
+                                PhotonDcMotor photonDcMotor = new PhotonDcMotor(photonLynxDcMotorController, motor.getPortNumber());
+                                hardwareMap.dcMotor.put(motorName, photonDcMotor);
+                                hardwareMap.put(motorName, photonDcMotor);
+                            }
+
                         }
 
                         device=photonLynxDcMotorController;
@@ -173,23 +178,32 @@ public class PhotonCore implements OpModeManagerNotifier.Notifications {
                         hardwareMap.servoController.remove(deviceName);
                         hardwareMap.put(deviceName, photonLynxServoController);
                         hardwareMap.servoController.put(deviceName, photonLynxServoController);
-                        for(Servo servo:hardwareMap.getAll(ServoImpl.class))
+                        List<Servo> servos = hardwareMap.getAll(Servo.class);
+                        for(Servo servo:servos)
                         {
-                            String servoName=Objects.requireNonNull(deviceNames.get(servo)).iterator().next();
-                            hardwareMap.remove(servoName, servo);
-                            hardwareMap.servo.remove(servoName);
-                            PhotonServo photonServo = new PhotonServo(photonLynxServoController, servo.getPortNumber());
-                            hardwareMap.put(servoName, photonServo);
-                            hardwareMap.servo.put(servoName, photonServo);
+                            if(servo.getController()==device)
+                            {
+                                String servoName=Objects.requireNonNull(deviceNames.get(servo)).iterator().next();
+                                hardwareMap.remove(servoName, servo);
+                                hardwareMap.servo.remove(servoName);
+                                PhotonServo photonServo = new PhotonServo(photonLynxServoController, servo.getPortNumber());
+                                hardwareMap.put(servoName, photonServo);
+                                hardwareMap.servo.put(servoName, photonServo);
+                            }
+
                         }
                         for(CRServo servo:hardwareMap.getAll(CRServoImpl.class))
                         {
-                            String servoName=Objects.requireNonNull(deviceNames.get(servo)).iterator().next();
-                            hardwareMap.remove(servoName, servo);
-                            hardwareMap.crservo.remove(servoName);
-                            PhotonCRServo photonServo = new PhotonCRServo(photonLynxServoController, servo.getPortNumber());
-                            hardwareMap.put(servoName, photonServo);
-                            hardwareMap.crservo.put(servoName, photonServo);
+                            if(servo.getController()==device)
+                            {
+                                String servoName=Objects.requireNonNull(deviceNames.get(servo)).iterator().next();
+                                hardwareMap.remove(servoName, servo);
+                                hardwareMap.crservo.remove(servoName);
+                                PhotonCRServo photonServo = new PhotonCRServo(photonLynxServoController, servo.getPortNumber());
+                                hardwareMap.put(servoName, photonServo);
+                                hardwareMap.crservo.put(servoName, photonServo);
+                            }
+
                         }
                         device=photonLynxServoController;
                     } catch (RobotCoreException | InterruptedException ignored) {
@@ -226,8 +240,6 @@ public class PhotonCore implements OpModeManagerNotifier.Notifications {
             for(I2cDeviceSynchDeviceWithParameters device: hardwareMap.getAll(I2cDeviceSynchDeviceWithParameters.class))
             {
                 String deviceName=Objects.requireNonNull(deviceNames.get(device)).iterator().next();
-                String deviceClientName=Objects.requireNonNull(deviceNames.get(device.getDeviceClient())).iterator().next();
-
                 // Get the LynxModule currently used by the I2C device
                 LynxModule usedModule = ReflectionUtils.getFieldValue(device.getDeviceClient(), "module");
                 if(!(usedModule instanceof PhotonLynxModule))
@@ -247,6 +259,21 @@ public class PhotonCore implements OpModeManagerNotifier.Notifications {
                         deviceClient=new PhotonLynxI2cDeviceSynchV2((PhotonLynxModule) usedModule, bus);
                     }
                     PhotonBNO055IMUNew photonBNO055IMUNew = new PhotonBNO055IMUNew(deviceClient, true);
+                    hardwareMap.remove(deviceName,device);
+                    hardwareMap.put(deviceName, photonBNO055IMUNew);
+                }
+                if(device instanceof BHI260IMU && !(device instanceof PhotonBHI260IMU))
+                {
+                    Integer bus = ReflectionUtils.getFieldValue(device.getDeviceClient(), "bus");
+                    PhotonI2cDeviceSynch deviceClient;
+                    if(device.getDeviceClient() instanceof LynxI2cDeviceSynchV1)
+                    {
+                        deviceClient=new PhotonLynxI2cDeviceSynchV1((PhotonLynxModule) usedModule, bus);
+                    }else
+                    {
+                        deviceClient=new PhotonLynxI2cDeviceSynchV2((PhotonLynxModule) usedModule, bus);
+                    }
+                    PhotonBHI260IMU photonBNO055IMUNew = new PhotonBHI260IMU(deviceClient, true);
                     hardwareMap.remove(deviceName,device);
                     hardwareMap.put(deviceName, photonBNO055IMUNew);
                 }

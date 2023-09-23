@@ -1,6 +1,7 @@
 package com.outoftheboxrobotics.photoncore.hardware.motor;
 
 import com.outoftheboxrobotics.photoncore.PhotonCore;
+import com.outoftheboxrobotics.photoncore.PhotonLastKnown;
 import com.outoftheboxrobotics.photoncore.hardware.PhotonLynxModule;
 import com.outoftheboxrobotics.photoncore.hardware.motor.commands.PhotonLynxGetADCCommand;
 import com.outoftheboxrobotics.photoncore.hardware.motor.commands.PhotonLynxGetMotorChannelCurrentAlertLevelCommand;
@@ -10,6 +11,7 @@ import com.outoftheboxrobotics.photoncore.hardware.motor.commands.PhotonLynxGetM
 import com.outoftheboxrobotics.photoncore.hardware.motor.commands.PhotonLynxGetMotorPIDControlLoopCoefficientsCommand;
 import com.outoftheboxrobotics.photoncore.hardware.motor.commands.PhotonLynxGetMotorPIDFControlLoopCoefficientsCommand;
 import com.outoftheboxrobotics.photoncore.hardware.motor.commands.PhotonLynxGetMotorTargetPositionCommand;
+import com.outoftheboxrobotics.photoncore.hardware.motor.commands.PhotonLynxGetMotorTargetVelocityCommand;
 import com.outoftheboxrobotics.photoncore.hardware.motor.commands.PhotonLynxResetMotorEncoderCommand;
 import com.outoftheboxrobotics.photoncore.hardware.motor.commands.PhotonLynxSetMotorChannelEnableCommand;
 import com.outoftheboxrobotics.photoncore.hardware.motor.commands.PhotonLynxSetMotorConstantPowerCommand;
@@ -25,11 +27,14 @@ import com.qualcomm.hardware.lynx.commands.core.LynxGetADCResponse;
 import com.qualcomm.hardware.lynx.commands.core.LynxGetMotorChannelCurrentAlertLevelResponse;
 import com.qualcomm.hardware.lynx.commands.core.LynxGetMotorChannelEnableResponse;
 import com.qualcomm.hardware.lynx.commands.core.LynxGetMotorChannelModeResponse;
+import com.qualcomm.hardware.lynx.commands.core.LynxGetMotorConstantPowerCommand;
 import com.qualcomm.hardware.lynx.commands.core.LynxGetMotorConstantPowerResponse;
 import com.qualcomm.hardware.lynx.commands.core.LynxGetMotorPIDControlLoopCoefficientsResponse;
 import com.qualcomm.hardware.lynx.commands.core.LynxGetMotorPIDFControlLoopCoefficientsCommand;
 import com.qualcomm.hardware.lynx.commands.core.LynxGetMotorPIDFControlLoopCoefficientsResponse;
 import com.qualcomm.hardware.lynx.commands.core.LynxGetMotorTargetPositionResponse;
+import com.qualcomm.hardware.lynx.commands.core.LynxGetMotorTargetVelocityCommand;
+import com.qualcomm.hardware.lynx.commands.core.LynxGetMotorTargetVelocityResponse;
 import com.qualcomm.hardware.lynx.commands.core.LynxSetMotorChannelModeCommand;
 import com.qualcomm.hardware.lynx.commands.core.LynxSetMotorConstantPowerCommand;
 import com.qualcomm.hardware.lynx.commands.core.LynxSetMotorPIDControlLoopCoefficientsCommand;
@@ -61,48 +66,74 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 public class PhotonLynxDcMotorController extends LynxDcMotorController implements PhotonDcMotorController {
-    private final PhotonLynxModule module;
-
     private static final String TAG="PhotonLynxDcMotorController";
     public static final int apiMotorFirst = LynxConstants.INITIAL_MOTOR_PORT;
     public static final double apiPowerFirst = -1.0;
     public static final double apiPowerLast  = 1.0;
 
-    protected static class MotorProperties
+    private static class MotorProperties
     {
         // We have caches of values that we *could* read from the controller, and need to
         // do so if the cache is invalid
-        public LastKnown<Double>                       lastKnownPower              = new LastKnown<>(Double.MAX_VALUE);
-        public LastKnown<Integer>                      lastKnownTargetPosition     = new LastKnown<>(Double.MAX_VALUE);
-        public LastKnown<DcMotor.RunMode>              lastKnownMode               = new LastKnown<>(Double.MAX_VALUE);
-        public LastKnown<DcMotor.ZeroPowerBehavior>    lastKnownZeroPowerBehavior  = new LastKnown<>(Double.MAX_VALUE);
-        public LastKnown<Boolean>                      lastKnownEnable             = new LastKnown<>(Double.MAX_VALUE);
-        public LastKnown<Double>                       lastKnownCurrentAlert       = new LastKnown<>(Double.MAX_VALUE); // mA
-        public LastKnown<PIDFCoefficients>             lastKnownPIDFCoefficients   = new LastKnown<>(Double.MAX_VALUE);
-        public LastKnown<PIDCoefficients>              lastKnownPIDCoefficients    = new LastKnown<>(Double.MAX_VALUE);
+        public PhotonLastKnown<Double> lastKnownPower              = new PhotonLastKnown<>(false);
+        public PhotonLastKnown<Integer>                      lastKnownTargetPosition     = new PhotonLastKnown<>(false);
+        public PhotonLastKnown<DcMotor.RunMode>              lastKnownMode               = new PhotonLastKnown<>(false);
+        public PhotonLastKnown<DcMotor.ZeroPowerBehavior>    lastKnownZeroPowerBehavior  = new PhotonLastKnown<>(false);
+        public PhotonLastKnown<Boolean>                      lastKnownEnable             = new PhotonLastKnown<>(false);
+        public PhotonLastKnown<Double>                       lastKnownCurrentAlert       = new PhotonLastKnown<>(false); // mA
+        public PhotonLastKnown<PIDFCoefficients>             lastKnownPIDFCoefficients   = new PhotonLastKnown<>(false);
+        public PhotonLastKnown<PIDCoefficients>              lastKnownPIDCoefficients    = new PhotonLastKnown<>(false);
         // The remainder of the data is authoritative, here
         public MotorConfigurationType                  motorType = MotorConfigurationType.getUnspecifiedMotorType();
         public MotorConfigurationType                  internalMotorType = null;
         public Map<DcMotor.RunMode, ExpansionHubMotorControllerParamsState> desiredPIDParams = new ConcurrentHashMap<>();
         public Map<DcMotor.RunMode, ExpansionHubMotorControllerParamsState> originalPIDParams = new ConcurrentHashMap<>();
+        
     }
-    protected MotorProperties[] motorProperties = new MotorProperties[LynxConstants.NUMBER_OF_MOTORS];
-
+    public static MotorProperties[] createPropertiesArray(int length)
+    {
+        MotorProperties[] properties  = new MotorProperties[length];
+        for(int i=0;i<length;i++) properties[i]=new MotorProperties();
+        return properties;
+    }
+    private MotorProperties[] motorProperties;
+    
     public PhotonLynxDcMotorController(PhotonLynxModule module) throws RobotCoreException, InterruptedException {
         super(null, module);
-        this.module=module;
     }
 
+    @Override
+    protected void doHook() {
+        motorProperties = createPropertiesArray(LynxConstants.NUMBER_OF_MOTORS);
+    }
     // Standard functionality
 
     @Override
     public boolean isMotorEnabled(int motor) {
+        
         if(PhotonCore.photon==null) return super.isMotorEnabled(motor);
-        return isMotorEnabledAsync(motor).join();
+        if(motorProperties[motor].lastKnownEnable.isValid())
+        {
+            return motorProperties[motor].lastKnownEnable.getValue();
+        }else {
+            PhotonLynxGetMotorChannelEnableCommand command = new PhotonLynxGetMotorChannelEnableCommand(getModule(),motor);
+            try {
+                LynxGetMotorChannelEnableResponse response = command.sendReceive();
+                boolean result = response.isEnabled();
+                motorProperties[motor].lastKnownEnable.setValue(result);
+                return result;
+            }
+            catch (InterruptedException|RuntimeException|LynxNackException e)
+            {
+                handleException(e);
+            }
+        }
+        return LynxUsbUtil.makePlaceholderValue(true);
     }
 
     @Override
     public synchronized void setMotorVelocity(int motor, double ticksPerSecond) {
+        
         if(PhotonCore.photon==null) {
             super.setMotorVelocity(motor,ticksPerSecond);
             return;
@@ -121,12 +152,13 @@ public class PhotonLynxDcMotorController extends LynxDcMotorController implement
                 LynxSetMotorTargetVelocityCommand.apiVelocityLast);
 
         try {
-            PhotonLynxSetMotorTargetVelocityCommand command = new PhotonLynxSetMotorTargetVelocityCommand(module, motor, iTicksPerSecond);
+            PhotonLynxSetMotorTargetVelocityCommand command = new PhotonLynxSetMotorTargetVelocityCommand(getModule(), motor, iTicksPerSecond);
             if (DEBUG) RobotLog.vv(TAG, "setMotorVelocity: mod=%d motor=%d iPower=%d", getModuleAddress(), motor, iTicksPerSecond);
-            command.send();
+            getModule().sendCommand(command);
             internalSetMotorEnable(motor, true);
         }
-        catch (InterruptedException|RuntimeException|LynxNackException e)
+        catch (InterruptedException | RuntimeException |
+               LynxUnsupportedCommandException e)
         {
             handleException(e);
         }
@@ -134,6 +166,7 @@ public class PhotonLynxDcMotorController extends LynxDcMotorController implement
 
     @Override
     public synchronized void setMotorVelocity(int motor, double angularRate, AngleUnit unit) {
+        
         if(PhotonCore.photon==null)
         {
             super.setMotorVelocity(motor,angularRate,unit);
@@ -151,6 +184,7 @@ public class PhotonLynxDcMotorController extends LynxDcMotorController implement
     @SuppressWarnings({"deprecation"})
     @Override
     public synchronized void setPIDFCoefficients(int motor, DcMotor.RunMode mode, PIDFCoefficients pidfCoefficients) {
+        
         if(PhotonCore.photon==null) {
             super.setPIDFCoefficients(motor,mode,pidfCoefficients);
             return;
@@ -171,27 +205,87 @@ public class PhotonLynxDcMotorController extends LynxDcMotorController implement
 
     @Override
     public PIDCoefficients getPIDCoefficients(int motor, DcMotor.RunMode mode) {
+        
         if(PhotonCore.photon==null) return super.getPIDCoefficients(motor, mode);
-        return getPIDCoefficientsAsync(motor, mode).join();
+        if(motorProperties[motor].lastKnownPIDCoefficients.isValid())
+        {
+            return motorProperties[motor].lastKnownPIDCoefficients.getValue();
+        }else {
+            PhotonLynxGetMotorPIDControlLoopCoefficientsCommand command = new PhotonLynxGetMotorPIDControlLoopCoefficientsCommand(getModule(),motor,mode);
+            try {
+                LynxGetMotorPIDControlLoopCoefficientsResponse response = command.sendReceive();
+                return new PIDCoefficients(
+                        LynxSetMotorPIDControlLoopCoefficientsCommand.externalCoefficientFromInternal(response.getP()),
+                        LynxSetMotorPIDControlLoopCoefficientsCommand.externalCoefficientFromInternal(response.getI()),
+                        LynxSetMotorPIDControlLoopCoefficientsCommand.externalCoefficientFromInternal(response.getD())
+                );
+            }
+            catch (LynxNackException e)
+            {
+                if (e.getNack().getNackReasonCode() == LynxNack.StandardReasonCode.PARAM2)
+                {
+                    // There's a non-zero F coefficient; ignore it
+                    PIDFCoefficients pidfCoefficients = getPIDFCoefficients(motor + apiMotorFirst, mode);
+                    return new PIDCoefficients(pidfCoefficients.p, pidfCoefficients.i, pidfCoefficients.d);
+                }
+                handleException(e);
+            }
+            catch (InterruptedException|RuntimeException e)
+            {
+                handleException(e);
+            }
+        }
+        return LynxUsbUtil.makePlaceholderValue(new PIDCoefficients());
     }
 
     @Override
     public PIDFCoefficients getPIDFCoefficients(int motor, DcMotor.RunMode mode) {
+        
         if(PhotonCore.photon==null) return super.getPIDFCoefficients(motor,mode);
-        return getPIDFCoefficientsAsync(motor,mode).join();
+
+        if(motorProperties[motor].lastKnownPIDFCoefficients.isValid())
+        {
+            return motorProperties[motor].lastKnownPIDFCoefficients.getValue();
+        }else {
+            if (getModule().isCommandSupported(LynxGetMotorPIDFControlLoopCoefficientsCommand.class))
+            {
+                PhotonLynxGetMotorPIDFControlLoopCoefficientsCommand command = new PhotonLynxGetMotorPIDFControlLoopCoefficientsCommand(this.getModule(), motor, mode);
+                try {
+                    LynxGetMotorPIDFControlLoopCoefficientsResponse response = command.sendReceive();
+                    PIDFCoefficients result =  new PIDFCoefficients(
+                            LynxSetMotorPIDControlLoopCoefficientsCommand.externalCoefficientFromInternal(response.getP()),
+                            LynxSetMotorPIDControlLoopCoefficientsCommand.externalCoefficientFromInternal(response.getI()),
+                            LynxSetMotorPIDControlLoopCoefficientsCommand.externalCoefficientFromInternal(response.getD()),
+                            LynxSetMotorPIDControlLoopCoefficientsCommand.externalCoefficientFromInternal(response.getF()),
+                            response.getInternalMotorControlAlgorithm().toExternal());
+                    motorProperties[motor].lastKnownPIDFCoefficients.setValue(result);
+                    return result;
+                }
+                catch (InterruptedException|RuntimeException|LynxNackException e)
+                {
+                    handleException(e);
+                }
+                return LynxUsbUtil.makePlaceholderValue(new PIDFCoefficients());
+            }
+            else
+            {
+                return new PIDFCoefficients(getPIDCoefficients(motor, mode));
+            }
+        }
     }
 
     @Override
     public void setMotorTargetPosition(int motor, int position, int tolerance) {
+        
         if(PhotonCore.photon==null) {
             super.setMotorTargetPosition(motor,position,tolerance);
             return;
         }
-        PhotonLynxSetMotorTargetPositionCommand command = new PhotonLynxSetMotorTargetPositionCommand(module, motor, position, tolerance);
+        PhotonLynxSetMotorTargetPositionCommand command = new PhotonLynxSetMotorTargetPositionCommand(getModule(), motor, position, tolerance);
         try {
-            command.send();
+            getModule().sendCommand(command);
         }
-        catch (InterruptedException|RuntimeException|LynxNackException e)
+        catch (LynxUnsupportedCommandException|InterruptedException|RuntimeException e)
         {
             handleException(e);
         }
@@ -199,14 +293,43 @@ public class PhotonLynxDcMotorController extends LynxDcMotorController implement
 
     @Override
     public double getMotorCurrent(int motor, CurrentUnit unit) {
+        
         if(PhotonCore.photon==null) return super.getMotorCurrent(motor,unit);
-        return getMotorCurrentAsync(motor, unit).join();
+        PhotonLynxGetADCCommand command = new PhotonLynxGetADCCommand(getModule(), PhotonLynxGetADCCommand.Channel.motorCurrent(motor), PhotonLynxGetADCCommand.Mode.ENGINEERING);
+        try
+        {
+            LynxGetADCResponse response = command.sendReceive();
+            return unit.convert(response.getValue(), CurrentUnit.MILLIAMPS);
+        }
+        catch (InterruptedException|RuntimeException|LynxNackException e)
+        {
+            handleException(e);
+        }
+        return LynxUsbUtil.makePlaceholderValue(0.0);
     }
 
     @Override
     public double getMotorCurrentAlert(int motor, CurrentUnit unit) {
+        
         if(PhotonCore.photon==null) return super.getMotorCurrentAlert(motor,unit);
-        return getMotorCurrentAlertAsync(motor,unit).join();
+        if(motorProperties[motor].lastKnownCurrentAlert.isValid())
+        {
+            return unit.convert(motorProperties[motor].lastKnownCurrentAlert.getValue(), CurrentUnit.MILLIAMPS);
+        }else {
+            PhotonLynxGetMotorChannelCurrentAlertLevelCommand command = new PhotonLynxGetMotorChannelCurrentAlertLevelCommand(getModule(), motor);
+            try
+            {
+                LynxGetMotorChannelCurrentAlertLevelResponse response = command.sendReceive();
+                double limit = response.getCurrentLimit();
+                motorProperties[motor].lastKnownCurrentAlert.setValue(limit);
+                return unit.convert(limit, CurrentUnit.MILLIAMPS);
+            }
+            catch (InterruptedException|RuntimeException|LynxNackException e)
+            {
+                handleException(e);
+            }
+            return LynxUsbUtil.makePlaceholderValue(0.0);
+        }
     }
 
     @Override
@@ -216,6 +339,7 @@ public class PhotonLynxDcMotorController extends LynxDcMotorController implement
 
     @Override
     public void setMotorMode(int motor, DcMotor.RunMode mode) {
+        
         if(PhotonCore.photon==null) {
             super.setMotorMode(motor,mode);
             return;
@@ -236,17 +360,17 @@ public class PhotonLynxDcMotorController extends LynxDcMotorController implement
                 // Stop the motor, but not in such a way that we disrupt the last known
                 // power, since we need to restore same when we come out of this mode.
                 setMotorPower(motor, 0);
-                command = new PhotonLynxResetMotorEncoderCommand(module, motor);
+                command = new PhotonLynxResetMotorEncoderCommand(getModule(), motor);
             }
             else
             {
                 zeroPowerBehavior = getMotorZeroPowerBehavior(motor);
-                command = new LynxSetMotorChannelModeCommand(module, motor, mode, zeroPowerBehavior);
+                command = new LynxSetMotorChannelModeCommand(getModule(), motor, mode, zeroPowerBehavior);
             }
             try {
                 if (DEBUG) RobotLog.vv(TAG, "setMotorChannelMode: mod=%d motor=%d mode=%s power=%f zero=%s",
                         getModuleAddress(), motor, mode.toString(), prevPower, zeroPowerBehavior.toString());
-                command.send();
+                getModule().sendCommand(command);
 
                 // Ok, remember that mode. Note we need to set it before we call internalSetMotorPower()
                 motorProperties[motor].lastKnownMode.setValue(mode);
@@ -254,7 +378,8 @@ public class PhotonLynxDcMotorController extends LynxDcMotorController implement
                 // re-issue current motor power to ensure it's correct for this mode
                 setMotorPower(motor, prevPower);
             }
-            catch (InterruptedException|RuntimeException|LynxNackException e)
+            catch (InterruptedException | RuntimeException |
+                   LynxUnsupportedCommandException e)
             {
                 handleException(e);
             }
@@ -263,12 +388,30 @@ public class PhotonLynxDcMotorController extends LynxDcMotorController implement
 
     @Override
     public DcMotor.RunMode getMotorMode(int motor) {
+        
         if(PhotonCore.photon==null) return super.getMotorMode(motor);
-        return getMotorModeAsync(motor).join();
+        if(motorProperties[motor].lastKnownMode.isValid())
+        {
+            return motorProperties[motor].lastKnownMode.getValue();
+        }else {
+            PhotonLynxGetMotorChannelModeCommand command = new PhotonLynxGetMotorChannelModeCommand(getModule(), motor);
+            try {
+                LynxGetMotorChannelModeResponse response = command.sendReceive();
+                DcMotor.RunMode result = response.getMode();
+                motorProperties[motor].lastKnownMode.setValue(result);
+                return result;
+            }
+            catch (InterruptedException|RuntimeException|LynxNackException e)
+            {
+                handleException(e);
+            }
+        }
+        return LynxUsbUtil.makePlaceholderValue(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
     }
 
     @Override
     public void setMotorPower(int motor, double power) {
+        
         if(PhotonCore.photon==null)
         {
             super.setMotorPower(motor,power);
@@ -289,22 +432,22 @@ public class PhotonLynxDcMotorController extends LynxDcMotorController implement
                     // compatibility, as setMotorVelocity exposes this more directly.
                     power = Math.signum(power) * Range.scale(Math.abs(power), 0, apiPowerLast, 0, getDefaultMaxMotorSpeed(motor));
                     iPower = (int)power;
-                    command = new PhotonLynxSetMotorTargetVelocityCommand(module, motor, iPower);
+                    command = new PhotonLynxSetMotorTargetVelocityCommand(getModule(), motor, iPower);
                     break;
                 }
                 case RUN_WITHOUT_ENCODER:
                 {
                     power = Range.scale(power, apiPowerFirst, apiPowerLast, LynxSetMotorConstantPowerCommand.apiPowerFirst, LynxSetMotorConstantPowerCommand.apiPowerLast);
                     iPower = (int)power;
-                    command = new PhotonLynxSetMotorConstantPowerCommand(module, motor, iPower);
+                    command = new PhotonLynxSetMotorConstantPowerCommand(getModule(), motor, iPower);
                     break;
                 }
             }
             try {
                 if (command != null)
                 {
-                    if (DEBUG) RobotLog.vv(TAG, "setMotorPower: mod=%d motor=%d iPower=%d", module.getModuleAddress(), motor, iPower);
-                    module.sendCommand(command);
+                    if (DEBUG) RobotLog.vv(TAG, "setMotorPower: mod=%d motor=%d iPower=%d",getModuleAddress(), motor, iPower);
+                    getModule().sendCommand(command);
                     setMotorEnable(motor);
                 }
             }
@@ -317,20 +460,63 @@ public class PhotonLynxDcMotorController extends LynxDcMotorController implement
 
     @Override
     public double getMotorPower(int motor) {
+        
         if(PhotonCore.photon==null) return super.getMotorPower(motor);
-        return getMotorPowerAsync(motor).join();
+        if(motorProperties[motor].lastKnownPower.isValid())
+        {
+            return motorProperties[motor].lastKnownPower.getValue();
+        }else {
+            DcMotor.RunMode mode = getMotorMode(motor);
+            switch (mode) {
+                case RUN_TO_POSITION:
+                case RUN_USING_ENCODER: {
+                    PhotonLynxGetMotorTargetVelocityCommand command = new PhotonLynxGetMotorTargetVelocityCommand(this.getModule(), motor);
+                    try {
+
+                        LynxGetMotorTargetVelocityResponse response = command.sendReceive();
+                        int iVelocity = response.getVelocity();
+                        double result = Math.signum(iVelocity) * Range.scale(Math.abs(iVelocity), 0, getDefaultMaxMotorSpeed(motor), 0, apiPowerLast);
+                        motorProperties[motor].lastKnownPower.setValue(result);
+                        return result;
+
+
+                    } catch (InterruptedException | LynxNackException e) {
+                        handleException(e);
+                    }
+                }
+                case RUN_WITHOUT_ENCODER:
+                default:
+                {
+                    PhotonLynxGetMotorConstantPowerCommand command = new PhotonLynxGetMotorConstantPowerCommand(this.getModule(), motor);
+                    try {
+
+                        LynxGetMotorConstantPowerResponse response = command.sendReceive();
+                        int iPower = response.getPower();
+                        double result = Range.scale(iPower, LynxSetMotorConstantPowerCommand.apiPowerFirst, LynxSetMotorConstantPowerCommand.apiPowerLast, apiPowerFirst, apiPowerLast);
+                        motorProperties[motor].lastKnownPower.setValue(result);
+                        return result;
+
+                    } catch (InterruptedException | LynxNackException e) {
+                        handleException(e);
+                    }
+                }
+            }
+        }
+        return LynxUsbUtil.makePlaceholderValue(0.0);
     }
 
 
 
     @Override
     public DcMotor.ZeroPowerBehavior getMotorZeroPowerBehavior(int motor) {
+        
         if(PhotonCore.photon==null) return super.getMotorZeroPowerBehavior(motor);
         return getMotorZeroPowerBehaviorAsync(motor).join();
     }
 
     @Override
     public boolean getMotorPowerFloat(int motor) {
+        
         if(PhotonCore.photon==null) return super.getMotorPowerFloat(motor);
         return getMotorPowerFloatAsync(motor).join();
     }
@@ -342,11 +528,13 @@ public class PhotonLynxDcMotorController extends LynxDcMotorController implement
 
     @Override
     public int getMotorTargetPosition(int motor) {
+        
         if(PhotonCore.photon==null) return super.getMotorTargetPosition(motor);
         return getMotorTargetPositionAsync(motor).join();
     }
     @Override
     public void setMotorEnable(int motor) {
+        
         if(PhotonCore.photon==null)
         {
             super.setMotorEnable(motor);
@@ -357,6 +545,7 @@ public class PhotonLynxDcMotorController extends LynxDcMotorController implement
 
     @Override
     public void setMotorDisable(int motor) {
+        
         if(PhotonCore.photon==null)
         {
             super.setMotorDisable(motor);
@@ -367,6 +556,7 @@ public class PhotonLynxDcMotorController extends LynxDcMotorController implement
 
     @Override
     public double getMotorCorrectedCurrent(int motor, CurrentUnit unit) {
+        
         return getMotorCorrectedCurrentAsync(motor,unit).join();
     }
     // Async functionality
@@ -374,6 +564,7 @@ public class PhotonLynxDcMotorController extends LynxDcMotorController implement
     ExecutorService isBusyAsyncExecutor = Executors.newSingleThreadExecutor();
     @Override
     public CompletableFuture<Boolean> isBusyAsync(int motor) {
+        
         CompletableFuture<Boolean> future=new CompletableFuture<>();
         isBusyAsyncExecutor.submit(()->{
             future.complete(isBusy(motor));
@@ -384,6 +575,7 @@ public class PhotonLynxDcMotorController extends LynxDcMotorController implement
     ExecutorService getMotorVelocityAsyncExecutor=Executors.newSingleThreadExecutor();
     @Override
     public CompletableFuture<Double> getMotorVelocityAsync(int motor) {
+        
         CompletableFuture<Double> future = new CompletableFuture<>();
         getMotorVelocityAsyncExecutor.submit(() -> {
             future.complete(getMotorVelocity(motor));
@@ -394,6 +586,7 @@ public class PhotonLynxDcMotorController extends LynxDcMotorController implement
 
     @Override
     public CompletableFuture<Double> getMotorVelocityAsync(int motor, AngleUnit unit) {
+        
         CompletableFuture<Double> future = new CompletableFuture<>();
         getMotorVelocityAsyncExecutor.submit(() -> {
             future.complete(getMotorVelocity(motor, unit));
@@ -403,11 +596,12 @@ public class PhotonLynxDcMotorController extends LynxDcMotorController implement
 
     @Override
     public CompletableFuture<PIDCoefficients> getPIDCoefficientsAsync(int motor, DcMotor.RunMode mode) {
+        
         if(motorProperties[motor].lastKnownPIDCoefficients.isValid())
         {
             return CompletableFuture.completedFuture(motorProperties[motor].lastKnownPIDCoefficients.getValue());
         }else {
-            PhotonLynxGetMotorPIDControlLoopCoefficientsCommand command = new PhotonLynxGetMotorPIDControlLoopCoefficientsCommand(module,motor,mode);
+            PhotonLynxGetMotorPIDControlLoopCoefficientsCommand command = new PhotonLynxGetMotorPIDControlLoopCoefficientsCommand(getModule(),motor,mode);
             try {
                 command.send();
                 return command.getResponse().thenApply(message->{
@@ -439,15 +633,16 @@ public class PhotonLynxDcMotorController extends LynxDcMotorController implement
 
     @Override
     public CompletableFuture<PIDFCoefficients> getPIDFCoefficientsAsync(int motor, DcMotor.RunMode mode) {
+
         if(motorProperties[motor].lastKnownPIDFCoefficients.isValid())
         {
             return CompletableFuture.completedFuture(motorProperties[motor].lastKnownPIDFCoefficients.getValue());
         }else {
-            if(module.isCommandSupported(LynxGetMotorPIDFControlLoopCoefficientsCommand.class))
+            if(getModule().isCommandSupported(LynxGetMotorPIDFControlLoopCoefficientsCommand.class))
             {
-                PhotonLynxGetMotorPIDFControlLoopCoefficientsCommand command = new PhotonLynxGetMotorPIDFControlLoopCoefficientsCommand(module, motor, mode);
+                PhotonLynxGetMotorPIDFControlLoopCoefficientsCommand command = new PhotonLynxGetMotorPIDFControlLoopCoefficientsCommand(getModule(), motor, mode);
                 try{
-                    command.send();
+                    getModule().sendCommand(command);
                     return command.getResponse().thenApply(message -> {
                         LynxGetMotorPIDFControlLoopCoefficientsResponse response = (LynxGetMotorPIDFControlLoopCoefficientsResponse) message;
                         PIDFCoefficients coefficients = new PIDFCoefficients(
@@ -460,7 +655,7 @@ public class PhotonLynxDcMotorController extends LynxDcMotorController implement
                         motorProperties[motor].lastKnownPIDFCoefficients.setValue(coefficients);
                         return coefficients;
                     });
-                }catch (LynxNackException | InterruptedException e)
+                }catch (LynxUnsupportedCommandException|InterruptedException e)
                 {
                     handleException(e);
                 }
@@ -476,19 +671,21 @@ public class PhotonLynxDcMotorController extends LynxDcMotorController implement
 
     @Override
     public CompletableFuture<Double> getMotorCorrectedCurrentAsync(int motor, CurrentUnit unit) {
+        
         return getMotorCurrentAsync(motor, unit).thenApply(current -> current*getMotorPower(motor));
     }
 
     @Override
     public CompletableFuture<Double> getMotorCurrentAsync(int motor, CurrentUnit unit) {
-        PhotonLynxGetADCCommand command = new PhotonLynxGetADCCommand(module, PhotonLynxGetADCCommand.Channel.motorCurrent(motor), PhotonLynxGetADCCommand.Mode.ENGINEERING);
+        
+        PhotonLynxGetADCCommand command = new PhotonLynxGetADCCommand(getModule(), PhotonLynxGetADCCommand.Channel.motorCurrent(motor), PhotonLynxGetADCCommand.Mode.ENGINEERING);
         try {
-            command.send();
+            getModule().sendCommand(command);
             return command.getResponse().thenApply(message -> {
                 LynxGetADCResponse response = (LynxGetADCResponse) message;
                 return unit.convert(response.getValue(), CurrentUnit.MILLIAMPS);
             });
-        }catch (LynxNackException | InterruptedException e)
+        }catch (InterruptedException | LynxUnsupportedCommandException e)
         {
             handleException(e);
         }
@@ -497,20 +694,21 @@ public class PhotonLynxDcMotorController extends LynxDcMotorController implement
 
     @Override
     public CompletableFuture<Double> getMotorCurrentAlertAsync(int motor, CurrentUnit unit) {
+        
         if(motorProperties[motor].lastKnownCurrentAlert.isValid())
         {
             return CompletableFuture.completedFuture(unit.convert(motorProperties[motor].lastKnownCurrentAlert.getValue(), CurrentUnit.MILLIAMPS));
         }else {
-            PhotonLynxGetMotorChannelCurrentAlertLevelCommand command = new PhotonLynxGetMotorChannelCurrentAlertLevelCommand(module, motor);
+            PhotonLynxGetMotorChannelCurrentAlertLevelCommand command = new PhotonLynxGetMotorChannelCurrentAlertLevelCommand(getModule(), motor);
             try {
-                command.send();
+                getModule().sendCommand(command);
                 command.getResponse().thenApply(message-> {
                     LynxGetMotorChannelCurrentAlertLevelResponse response = (LynxGetMotorChannelCurrentAlertLevelResponse) message;
                     double currentAlert = response.getCurrentLimit();
                     motorProperties[motor].lastKnownCurrentAlert.setValue(currentAlert);
                     return unit.convert(currentAlert, CurrentUnit.MILLIAMPS);
                 });
-            }catch (LynxNackException | InterruptedException e)
+            }catch (LynxUnsupportedCommandException | InterruptedException e)
             {
                 handleException(e);
             }
@@ -521,6 +719,7 @@ public class PhotonLynxDcMotorController extends LynxDcMotorController implement
     ExecutorService isMotorOverCurrentAsyncExecutor = Executors.newSingleThreadExecutor();
     @Override
     public CompletableFuture<Boolean> isMotorOverCurrentAsync(int motor) {
+        
         CompletableFuture<Boolean> future = new CompletableFuture<>();
         isMotorOverCurrentAsyncExecutor.submit(()->{
             future.complete(isMotorOverCurrent(motor));
@@ -531,14 +730,14 @@ public class PhotonLynxDcMotorController extends LynxDcMotorController implement
 
     @Override
     public CompletableFuture<DcMotor.RunMode> getMotorModeAsync(int motor) {
-        CompletableFuture<DcMotor.RunMode> future = new CompletableFuture<>();
+
         if(motorProperties[motor].lastKnownMode.isValid())
         {
-            future.complete(motorProperties[motor].lastKnownMode.getValue());
+            return CompletableFuture.completedFuture(motorProperties[motor].lastKnownMode.getValue());
         }else {
-            PhotonLynxGetMotorChannelModeCommand command = new PhotonLynxGetMotorChannelModeCommand(module, motor);
+            PhotonLynxGetMotorChannelModeCommand command = new PhotonLynxGetMotorChannelModeCommand(getModule(), motor);
             try {
-                command.send();
+                getModule().sendCommand(command);
                 return command.getResponse().thenApply(message -> {
                     LynxGetMotorChannelModeResponse response = (LynxGetMotorChannelModeResponse) message;
                     DcMotor.RunMode mode = response.getMode();
@@ -548,30 +747,56 @@ public class PhotonLynxDcMotorController extends LynxDcMotorController implement
                     motorProperties[motor].lastKnownZeroPowerBehavior.setValue(zeroPowerBehavior);
                     return mode;
                 });
-            } catch (LynxNackException | InterruptedException e) {
+            } catch (LynxUnsupportedCommandException | InterruptedException e) {
                 handleException(e);
             }
         }
-        return future;
+        return CompletableFuture.completedFuture(LynxUsbUtil.makePlaceholderValue(DcMotor.RunMode.RUN_WITHOUT_ENCODER));
     }
 
     @Override
     public CompletableFuture<Double> getMotorPowerAsync(int motor) {
+        
         if(motorProperties[motor].lastKnownPower.isValid())
         {
             return CompletableFuture.completedFuture(motorProperties[motor].lastKnownPower.getValue());
         }else {
-            PhotonLynxGetMotorConstantPowerCommand command = new PhotonLynxGetMotorConstantPowerCommand(module, motor);
-            try {
-                command.send();
-                return command.getResponse().thenApply(message -> {
-                    LynxGetMotorConstantPowerResponse response = (LynxGetMotorConstantPowerResponse) message;
-                    Double power = Range.scale(response.getPower(), LynxSetMotorConstantPowerCommand.apiPowerFirst, LynxSetMotorConstantPowerCommand.apiPowerLast, apiPowerFirst, apiPowerLast);
-                    motorProperties[motor].lastKnownPower.setValue(power);
-                    return power;
-                });
-            } catch (LynxNackException | InterruptedException e) {
-                handleException(e);
+            DcMotor.RunMode mode = getMotorMode(motor);
+            switch (mode) {
+                case RUN_TO_POSITION:
+                case RUN_USING_ENCODER: {
+                    PhotonLynxGetMotorTargetVelocityCommand command = new PhotonLynxGetMotorTargetVelocityCommand(this.getModule(), motor);
+                    try {
+                        getModule().sendCommand(command);
+                        return command.getResponse().thenApply(message -> {
+                            LynxGetMotorTargetVelocityResponse response = (LynxGetMotorTargetVelocityResponse) message;
+                            int iVelocity = response.getVelocity();
+                            double result = Math.signum(iVelocity) * Range.scale(Math.abs(iVelocity), 0, getDefaultMaxMotorSpeed(motor), 0, apiPowerLast);
+                            motorProperties[motor].lastKnownPower.setValue(result);
+                            return result;
+                        });
+
+                    } catch (InterruptedException | LynxUnsupportedCommandException e) {
+                        handleException(e);
+                    }
+                }
+                case RUN_WITHOUT_ENCODER:
+                default:
+                {
+                    PhotonLynxGetMotorConstantPowerCommand command = new PhotonLynxGetMotorConstantPowerCommand(this.getModule(), motor);
+                    try {
+                        getModule().sendCommand(command);
+                        return command.getResponse().thenApply(message -> {
+                            LynxGetMotorConstantPowerResponse response = (LynxGetMotorConstantPowerResponse) message;
+                            int iPower = response.getPower();
+                            double result = Range.scale(iPower, LynxSetMotorConstantPowerCommand.apiPowerFirst, LynxSetMotorConstantPowerCommand.apiPowerLast, apiPowerFirst, apiPowerLast);
+                            motorProperties[motor].lastKnownPower.setValue(result);
+                            return result;
+                        });
+                    } catch (InterruptedException | LynxUnsupportedCommandException e) {
+                        handleException(e);
+                    }
+                }
             }
         }
         return CompletableFuture.completedFuture(LynxUsbUtil.makePlaceholderValue(0.0));
@@ -579,13 +804,14 @@ public class PhotonLynxDcMotorController extends LynxDcMotorController implement
 
     @Override
     public CompletableFuture<DcMotor.ZeroPowerBehavior> getMotorZeroPowerBehaviorAsync(int motor) {
+        
         if(motorProperties[motor].lastKnownZeroPowerBehavior.isValid())
         {
             return CompletableFuture.completedFuture(motorProperties[motor].lastKnownZeroPowerBehavior.getValue());
         }else {
-            PhotonLynxGetMotorChannelModeCommand command = new PhotonLynxGetMotorChannelModeCommand(module, motor);
+            PhotonLynxGetMotorChannelModeCommand command = new PhotonLynxGetMotorChannelModeCommand(getModule(), motor);
             try {
-                command.send();
+                getModule().sendCommand(command);
                 return command.getResponse().thenApply(message -> {
                     LynxGetMotorChannelModeResponse response = (LynxGetMotorChannelModeResponse) message;
                     DcMotor.ZeroPowerBehavior zeroPowerBehavior = response.getZeroPowerBehavior();
@@ -595,7 +821,7 @@ public class PhotonLynxDcMotorController extends LynxDcMotorController implement
                     motorProperties[motor].lastKnownMode.setValue(mode);
                     return zeroPowerBehavior;
                 });
-            } catch (LynxNackException | InterruptedException e) {
+            } catch (InterruptedException | LynxUnsupportedCommandException e) {
                 handleException(e);
             }
         }
@@ -604,19 +830,21 @@ public class PhotonLynxDcMotorController extends LynxDcMotorController implement
 
     @Override
     public CompletableFuture<Boolean> getMotorPowerFloatAsync(int motor) {
+        
         return CompletableFuture.allOf(getMotorZeroPowerBehaviorAsync(motor), getMotorPowerAsync(motor)).thenApply(unused ->
                 motorProperties[motor].lastKnownZeroPowerBehavior.getNonTimedValue() == DcMotor.ZeroPowerBehavior.FLOAT && motorProperties[motor].lastKnownPower.getNonTimedValue() < 1e-9);
     }
 
     @Override
     public CompletableFuture<Integer> getMotorTargetPositionAsync(int motor) {
+        
         if(motorProperties[motor].lastKnownTargetPosition.isValid())
         {
             return CompletableFuture.completedFuture(motorProperties[motor].lastKnownTargetPosition.getValue());
         }else {
-            PhotonLynxGetMotorTargetPositionCommand command = new PhotonLynxGetMotorTargetPositionCommand(module, motor);
+            PhotonLynxGetMotorTargetPositionCommand command = new PhotonLynxGetMotorTargetPositionCommand(getModule(), motor);
             try {
-                command.send();
+                getModule().sendCommand(command);
                 return command.getResponse().thenApply(message -> {
                     LynxGetMotorTargetPositionResponse response = (LynxGetMotorTargetPositionResponse) message;
                     Integer targetPosition =response.getTarget();
@@ -624,7 +852,7 @@ public class PhotonLynxDcMotorController extends LynxDcMotorController implement
                     // We could store the tolerance here, but there's no actual method to get it...
                     return targetPosition;
                 });
-            } catch (LynxNackException | InterruptedException e) {
+            } catch (InterruptedException | LynxUnsupportedCommandException e) {
                 handleException(e);
             }
         }
@@ -633,6 +861,7 @@ public class PhotonLynxDcMotorController extends LynxDcMotorController implement
     ExecutorService getMotorCurrentPositionAsyncExecutor = Executors.newSingleThreadExecutor();
     @Override
     public CompletableFuture<Integer> getMotorCurrentPositionAsync(int motor) {
+        
         CompletableFuture<Integer> future = new CompletableFuture<>();
         getMotorCurrentPositionAsyncExecutor.submit(() -> {
             future.complete(getMotorCurrentPosition(motor));
@@ -644,9 +873,10 @@ public class PhotonLynxDcMotorController extends LynxDcMotorController implement
 
     private void internalSetMotorEnable(int motor, boolean enabled)
     {
+        
         if(motorProperties[motor].lastKnownEnable.updateValue(enabled))
         {
-            PhotonLynxSetMotorChannelEnableCommand command = new PhotonLynxSetMotorChannelEnableCommand(module, motor, enabled);
+            PhotonLynxSetMotorChannelEnableCommand command = new PhotonLynxSetMotorChannelEnableCommand(getModule(), motor, enabled);
             try {
                 command.send();
             }catch (LynxNackException  e)
@@ -671,20 +901,21 @@ public class PhotonLynxDcMotorController extends LynxDcMotorController implement
 
     @Override
     public CompletableFuture<Boolean> isMotorEnabledAsync(int motor) {
+        
         if(motorProperties[motor].lastKnownEnable.isValid())
         {
             return CompletableFuture.completedFuture(motorProperties[motor].lastKnownEnable.getValue());
         }else {
-            PhotonLynxGetMotorChannelEnableCommand command = new PhotonLynxGetMotorChannelEnableCommand(module,motor);
+            PhotonLynxGetMotorChannelEnableCommand command = new PhotonLynxGetMotorChannelEnableCommand(getModule(),motor);
             try {
-                command.send();
+                getModule().sendCommand(command);
                 return command.getResponse().thenApply(message-> {
                     LynxGetMotorChannelEnableResponse response = (LynxGetMotorChannelEnableResponse) message;
                     boolean enabled = response.isEnabled();
                     motorProperties[motor].lastKnownEnable.setValue(enabled);
                     return enabled;
                 });
-            }catch (LynxNackException | InterruptedException e)
+            }catch (InterruptedException | LynxUnsupportedCommandException e)
             {
                 handleException(e);
             }
@@ -693,13 +924,13 @@ public class PhotonLynxDcMotorController extends LynxDcMotorController implement
     }
 
 
-
-
     @Override
     public void forgetLastKnown() {
+        
         super.forgetLastKnown();
-        for(MotorProperties motorProperties: motorProperties)
-        {
+        if(motorProperties!=null)
+            for(MotorProperties motorProperties: motorProperties)
+            {
             motorProperties.lastKnownEnable.invalidate();
             motorProperties.lastKnownPower.invalidate();
             motorProperties.lastKnownCurrentAlert.invalidate();
@@ -707,19 +938,16 @@ public class PhotonLynxDcMotorController extends LynxDcMotorController implement
             motorProperties.lastKnownPIDFCoefficients.invalidate();
             motorProperties.lastKnownTargetPosition.invalidate();
             motorProperties.lastKnownZeroPowerBehavior.invalidate();
-        }
+            }
     }
 
     @Override
     public synchronized void setMotorZeroPowerBehavior(int motor, DcMotor.ZeroPowerBehavior zeroPowerBehavior) {
+        
         super.setMotorZeroPowerBehavior(motor, zeroPowerBehavior);
     }
 
-    @Override
-    public boolean isMotorOverCurrent(int motor) {
-        if(PhotonCore.photon==null) return super.isMotorOverCurrent(motor);
-        return isMotorOverCurrentAsync(motor).join();
-    }
+
 
 
     @Override
@@ -729,11 +957,13 @@ public class PhotonLynxDcMotorController extends LynxDcMotorController implement
 
     @Override
     public synchronized MotorConfigurationType getMotorType(int motor) {
+        
         return motorProperties[motor].motorType;
     }
 
     @Override
     public synchronized void setMotorType(int motor, MotorConfigurationType motorType) {
+        
         motorProperties[motor].motorType = motorType;
         if (motorProperties[motor].internalMotorType==null)
         {
@@ -755,11 +985,13 @@ public class PhotonLynxDcMotorController extends LynxDcMotorController implement
 
     @Override
     protected void rememberPIDParams(int motorZ, ExpansionHubMotorControllerParamsState params) {
+        
         motorProperties[motorZ].desiredPIDParams.put(params.mode, params);
     }
 
     @Override
     protected void updateMotorParams(int motorZ) {
+        
         for (ExpansionHubMotorControllerParamsState params : motorProperties[motorZ].desiredPIDParams.values())
         {
             if (!params.isDefault())
@@ -771,11 +1003,13 @@ public class PhotonLynxDcMotorController extends LynxDcMotorController implement
 
     @Override
     protected int getDefaultMaxMotorSpeed(int motorZ) {
+        
         return motorProperties[motorZ].motorType.getAchieveableMaxTicksPerSecondRounded();
     }
     @SuppressWarnings({"deprecation"})
     @Override
     protected boolean internalSetPIDFCoefficients(int motorZ, DcMotor.RunMode mode, PIDFCoefficients pidfCoefficients) {
+        
         boolean supported = true;
 
         // If this is the very first time that we've set coefficients, then remember what params were in use before we set anything
@@ -806,18 +1040,19 @@ public class PhotonLynxDcMotorController extends LynxDcMotorController implement
             if (getModule().isCommandSupported(LynxSetMotorPIDFControlLoopCoefficientsCommand.class))
             {
                 LynxSetMotorPIDFControlLoopCoefficientsCommand.InternalMotorControlAlgorithm algorithm = LynxSetMotorPIDFControlLoopCoefficientsCommand.InternalMotorControlAlgorithm.fromExternal(pidfCoefficients.algorithm);
-                LynxSetMotorPIDFControlLoopCoefficientsCommand command = new LynxSetMotorPIDFControlLoopCoefficientsCommand(module, motorZ, mode, p, i, d, f, algorithm);
+                LynxSetMotorPIDFControlLoopCoefficientsCommand command = new LynxSetMotorPIDFControlLoopCoefficientsCommand(getModule(), motorZ, mode, p, i, d, f, algorithm);
                 try {
                     command.send();
                 }
-                catch (InterruptedException|RuntimeException|LynxNackException e)
+                catch (InterruptedException | RuntimeException |
+                       LynxNackException e)
                 {
                     supported = handleException(e);
                 }
             }
             else if (f == 0 && pidfCoefficients.algorithm == MotorControlAlgorithm.LegacyPID)
             {
-                LynxSetMotorPIDControlLoopCoefficientsCommand command = new LynxSetMotorPIDControlLoopCoefficientsCommand(module, motorZ, mode, p, i, d);
+                LynxSetMotorPIDControlLoopCoefficientsCommand command = new LynxSetMotorPIDControlLoopCoefficientsCommand(getModule(), motorZ, mode, p, i, d);
                 try {
                     command.send();
                 }
@@ -835,7 +1070,6 @@ public class PhotonLynxDcMotorController extends LynxDcMotorController implement
 
         return supported;
     }
-
     @Override
     public void floatHardware() {
         super.floatHardware();

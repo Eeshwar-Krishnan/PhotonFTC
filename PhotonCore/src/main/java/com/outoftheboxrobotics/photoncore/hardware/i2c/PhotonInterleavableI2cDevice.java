@@ -7,5 +7,5 @@ import java.util.concurrent.CompletableFuture;
 
 public interface PhotonInterleavableI2cDevice {
     void scheduleInterleavedCommand(PhotonCommandBase<? extends LynxMessage> command);
-    CompletableFuture<? extends LynxMessage> getResponse();
+    LynxMessage getResult();
 }

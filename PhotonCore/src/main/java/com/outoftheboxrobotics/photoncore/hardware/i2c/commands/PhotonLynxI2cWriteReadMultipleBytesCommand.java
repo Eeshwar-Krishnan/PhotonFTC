@@ -3,6 +3,7 @@ package com.outoftheboxrobotics.photoncore.hardware.i2c.commands;
 import com.outoftheboxrobotics.photoncore.PhotonCommandBase;
 import com.qualcomm.hardware.lynx.LynxModuleIntf;
 import com.qualcomm.hardware.lynx.LynxNackException;
+import com.qualcomm.hardware.lynx.commands.LynxInterface;
 import com.qualcomm.hardware.lynx.commands.LynxMessage;
 import com.qualcomm.hardware.lynx.commands.core.LynxI2cWriteReadMultipleBytesCommand;
 import com.qualcomm.hardware.lynx.commands.standard.LynxAck;
@@ -42,7 +43,15 @@ public class PhotonLynxI2cWriteReadMultipleBytesCommand extends LynxI2cWriteRead
     }
 
     @Override
-    public CompletableFuture<LynxMessage> getResponse() throws LynxNackException {
+    public CompletableFuture<LynxMessage> getResponse() {
         return future;
+    }
+    @Override
+    public int getCommandNumber() {
+        LynxInterface theInterface = this.getInterface();
+        if (null == theInterface)
+            return LynxInterface.ERRONEOUS_COMMAND_NUMBER;   // should never happen in working system, but might if pretending
+
+        return theInterface.getBaseCommandNumber() + 52;
     }
 }
