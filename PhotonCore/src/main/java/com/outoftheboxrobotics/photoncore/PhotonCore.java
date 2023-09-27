@@ -2,6 +2,7 @@ package com.outoftheboxrobotics.photoncore;
 
 import android.content.Context;
 
+import com.outoftheboxrobotics.photoncore.hardware.PhotonLynxCommandListener;
 import com.outoftheboxrobotics.photoncore.hardware.PhotonLynxModule;
 import com.outoftheboxrobotics.photoncore.hardware.PhotonLynxVoltageSensor;
 import com.outoftheboxrobotics.photoncore.hardware.i2c.PhotonI2cDeviceSynch;
@@ -52,7 +53,7 @@ public class PhotonCore implements OpModeManagerNotifier.Notifications {
     // Configuration and singleton values
     private static final String TAG = "PhotonCore";
     private static final PhotonCore instance = new PhotonCore();
-    private static final boolean DEBUG=true;
+    public static final boolean DEBUG=true;
     public static Photon photon;
 
     private OpModeManagerImpl opModeManager;
@@ -283,7 +284,13 @@ public class PhotonCore implements OpModeManagerNotifier.Notifications {
             }
         }
     }
-
+    public static boolean addLynxCommandListener(PhotonLynxCommandListener listener)
+    {
+        if(instance.opModeManager.getActiveOpModeName().equals(OpModeManager.DEFAULT_OP_MODE_NAME)) return false;
+        if(photon==null) return false;
+        List<PhotonLynxModule> modules = instance.opModeManager.getActiveOpMode().hardwareMap.getAll(PhotonLynxModule.class);
+        return modules.stream().allMatch(module -> module.addLynxCommandListener(listener));
+    }
     @Override
     public void onOpModePreStart(OpMode opMode) {}
     @Override

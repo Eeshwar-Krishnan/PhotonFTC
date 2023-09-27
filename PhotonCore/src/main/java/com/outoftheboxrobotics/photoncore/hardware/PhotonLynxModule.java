@@ -70,10 +70,10 @@ public class PhotonLynxModule extends LynxModule {
         }
         return null;
     }
-    private final LynxModule delegate;
     private PhotonLynxModule(LynxModule delegate, LynxUsbDevice lynxUsbDevice, Integer moduleAddress, Boolean isParent, Boolean isUserModule) {
         super(lynxUsbDevice, moduleAddress, isParent, isUserModule);
-        this.delegate=delegate;
+        stopPingTimer(false);
+        delegate.disengage();
     }
 
     public LynxUsbDevice getLynxUsbDevice() {
@@ -82,12 +82,106 @@ public class PhotonLynxModule extends LynxModule {
 
     @Override
     public void acquireNetworkTransmissionLock(@NonNull LynxMessage message) throws InterruptedException {
-        if(PhotonCore.photon==null) delegate.acquireNetworkTransmissionLock(message);
+        if(PhotonCore.photon==null)
+            super.acquireNetworkTransmissionLock(message);
     }
+
+    @Override
+    public void onIncomingDatagramReceived(LynxDatagram datagram) {
+        if(PhotonCore.photon==null) {
+            super.onIncomingDatagramReceived(datagram);
+            return;
+        }
+        warnIfClosed();
+        noteDatagramReceived();
+        // Reify the incoming command. First, what kind of command is that guy?
+        try {
+            MessageClassAndCtor pair = this.commandClasses.get(datagram.getCommandNumber());
+            if (pair != null)
+            {
+                // Is it the command itself, or a response to a command of that flavor?
+                if (datagram.isResponse())
+                {
+                    pair = responseClasses.get(pair.clazz);
+                }
+                if (pair != null)
+                {
+                    // Instantiate the command or response so we can deserialize
+                    LynxMessage incomingMessage = pair.ctor.newInstance(this);
+
+                    // Deserialize
+                    incomingMessage.setSerialization(datagram);
+                    incomingMessage.loadFromSerialization();
+
+                    if (LynxUsbDeviceImpl.DEBUG_LOG_MESSAGES) RobotLog.vv(TAG, "rec'd: mod=%d cmd=0x%02x(%s) msg#=%d ref#=%d", datagram.getSourceModuleAddress(), datagram.getPacketId(), incomingMessage.getClass().getSimpleName(), incomingMessage.getMessageNumber(), incomingMessage.getReferenceNumber());
+
+                    // Acks&nacks are processed differently than responses
+                    if (incomingMessage.isAck() || incomingMessage.isNack())
+                    {
+                        LynxCommand ackdCommand = (LynxCommand) this.unfinishedCommands.get(datagram.getReferenceNumber());
+                        if (ackdCommand != null)
+                        {
+                            // Process the ack or the nack
+                            if (incomingMessage.isNack())
+                            {
+                                ackdCommand.onNackReceived((LynxNack)incomingMessage);
+                            }
+                            else
+                            {
+                                ackdCommand.onAckReceived((LynxAck)incomingMessage);
+                            }
+
+                            // If we get an ack or a nack, then we WON'T get a response
+                            finishedWithMessage(ackdCommand);
+                            for (PhotonLynxCommandListener listener:
+                                    listeners) {
+                                listener.onCommandResponse(incomingMessage, ackdCommand);
+                            }
+                        }
+                        else
+                        {
+                            RobotLog.ee(TAG, "unable to find originating LynxRespondable for mod=%d msg#=%d ref#=%d", datagram.getSourceModuleAddress(), datagram.getMessageNumber(), datagram.getReferenceNumber());
+                        }
+                    }
+                    else
+                    {
+                        LynxCommand originatingCommand = (LynxCommand) this.unfinishedCommands.get(datagram.getReferenceNumber());
+                        if (originatingCommand != null)
+                        {
+                            Assert.assertTrue(incomingMessage.isResponse());
+
+                            // Process the response
+                            originatingCommand.onResponseReceived((LynxResponse) incomingMessage);
+                            for (PhotonLynxCommandListener listener:
+                                 listeners) {
+                                listener.onCommandResponse((LynxResponse)incomingMessage, originatingCommand);
+                            }
+                            // After a response is received, we're always done with a command
+                            finishedWithMessage(originatingCommand);
+                        }
+                        else
+                        {
+                            RobotLog.ee(TAG, "unable to find originating command for packetid=0x%04x msg#=%d ref#=%d", datagram.getPacketId(), datagram.getMessageNumber(), datagram.getReferenceNumber());
+                        }
+                    }
+                }
+            }
+            else
+            {
+                RobotLog.ee(TAG, "no command class known for command=0x%02x", datagram.getCommandNumber());
+            }
+        }
+        catch (InstantiationException|IllegalAccessException|InvocationTargetException|RuntimeException e)
+        {
+            RobotLog.ee(TAG, e, "internal error in LynxModule.noteIncomingDatagramReceived()");
+        }
+
+    }
+
     @Override
     public void sendCommand(LynxMessage command) throws InterruptedException, LynxUnsupportedCommandException {
         if(PhotonCore.photon==null) {
-            delegate.sendCommand(command);
+            super.sendCommand(command);
             return;
         }
         if(command instanceof LynxCommand)
@@ -107,14 +201,23 @@ public class PhotonLynxModule extends LynxModule {
                 this.unfinishedCommands.put(msgnumCur, (LynxRespondable)command);
                 // Send it on out!
                 this.lynxUsbDevice.transmit(command);
-                return;
+                for (PhotonLynxCommandListener listener:
+                        listeners) {
+                    listener.onCommand((LynxCommand)command);
+                }
             }
         }
     }
-
+    private List<PhotonLynxCommandListener> listeners = new ArrayList<PhotonLynxCommandListener>();
+    public boolean addLynxCommandListener(PhotonLynxCommandListener listener)
+    {
+        listeners.add(listener);
+        return true;
+    }
     @Override
     public void releaseNetworkTransmissionLock(@NonNull LynxMessage message) throws InterruptedException {
-        if(PhotonCore.photon==null)delegate.releaseNetworkTransmissionLock(message);
+        if(PhotonCore.photon==null)
+            super.releaseNetworkTransmissionLock(message);
     }
 
     @Override
