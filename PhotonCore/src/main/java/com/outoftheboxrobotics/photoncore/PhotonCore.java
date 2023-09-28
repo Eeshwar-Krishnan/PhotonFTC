@@ -227,13 +227,6 @@ public class PhotonCore implements OpModeManagerNotifier.Notifications {
                     }
 
                 }
-
-
-                // We don't have this immediately after getting the used module, so we can benefit
-                // from "free" recreations of hardware
-
-
-
                 ReflectionUtils.setFieldValue(device, usedModule, "module");
             }
 

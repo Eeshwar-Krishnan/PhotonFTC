@@ -4,43 +4,25 @@ import androidx.annotation.NonNull;
 
 import com.outoftheboxrobotics.photoncore.PhotonCore;
 import com.outoftheboxrobotics.photoncore.ReflectionUtils;
-import com.outoftheboxrobotics.photoncore.hardware.motor.commands.PhotonLynxSetMotorConstantPowerCommand;
-import com.qualcomm.hardware.lynx.LynxController;
 import com.qualcomm.hardware.lynx.LynxModule;
-import com.qualcomm.hardware.lynx.LynxNackException;
 import com.qualcomm.hardware.lynx.LynxUnsupportedCommandException;
 import com.qualcomm.hardware.lynx.LynxUsbDevice;
 import com.qualcomm.hardware.lynx.LynxUsbDeviceImpl;
-import com.qualcomm.hardware.lynx.Supplier;
 import com.qualcomm.hardware.lynx.commands.LynxCommand;
 import com.qualcomm.hardware.lynx.commands.LynxDatagram;
-import com.qualcomm.hardware.lynx.commands.LynxInterface;
 import com.qualcomm.hardware.lynx.commands.LynxMessage;
 import com.qualcomm.hardware.lynx.commands.LynxRespondable;
 import com.qualcomm.hardware.lynx.commands.LynxResponse;
 import com.qualcomm.hardware.lynx.commands.standard.LynxAck;
 import com.qualcomm.hardware.lynx.commands.standard.LynxNack;
-import com.qualcomm.robotcore.exception.RobotCoreException;
-import com.qualcomm.robotcore.hardware.LynxModuleImuType;
-import com.qualcomm.robotcore.hardware.usb.RobotArmingStateNotifier;
-import com.qualcomm.robotcore.robot.Robot;
 import com.qualcomm.robotcore.util.RobotLog;
-import com.qualcomm.robotcore.util.SerialNumber;
 
-import org.firstinspires.ftc.robotcore.external.navigation.CurrentUnit;
-import org.firstinspires.ftc.robotcore.external.navigation.TempUnit;
-import org.firstinspires.ftc.robotcore.external.navigation.VoltageUnit;
 import org.firstinspires.ftc.robotcore.internal.system.Assert;
-import org.firstinspires.ftc.robotcore.internal.usb.exception.RobotUsbException;
 
 import java.lang.reflect.InvocationTargetException;
-import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
-import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * Optimized LynxModule, main magic of Photon.
@@ -189,7 +171,6 @@ public class PhotonLynxModule extends LynxModule {
             synchronized (this)
             {
                 while(unfinishedCommands.size()>PhotonCore.photon.maximumParallelCommands());
-
                 command.setMessageNumber(getNewMessageNumber());
                 int msgnumCur = command.getMessageNumber();
 

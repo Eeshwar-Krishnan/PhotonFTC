@@ -9,7 +9,6 @@ import com.qualcomm.hardware.lynx.commands.LynxCommand;
 import com.qualcomm.hardware.lynx.commands.LynxMessage;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.eventloop.opmode.OpModeManagerImpl;
-import com.qualcomm.robotcore.eventloop.opmode.OpModeManagerNotifier;
 import com.qualcomm.robotcore.util.RobotLog;
 
 import org.firstinspires.ftc.ftccommon.external.OnCreateEventLoop;
@@ -20,13 +19,14 @@ import java.io.IOException;
 import java.util.Locale;
 
 
-public class PhotonProfiler implements OpModeManagerNotifier.Notifications, PhotonLynxCommandListener {
+public class PhotonProfiler implements OpModeManagerImpl.Notifications, PhotonLynxCommandListener {
     private static final PhotonProfiler instance = new PhotonProfiler();
     private static final String TAG = "PhotonProfiler";
 
-    private static boolean attached = false;
-    private static File logFile;
-    private static FileWriter logFileWriter;
+    private boolean attached = false;
+    private boolean logging=false;
+    private File logFile;
+    private FileWriter logFileWriter;
     private OpModeManagerImpl opModeManager;
 
     @SuppressWarnings({"unused"})
@@ -34,25 +34,27 @@ public class PhotonProfiler implements OpModeManagerNotifier.Notifications, Phot
     public static void attachEventLoop(Context context, FtcEventLoop eventLoop)
     {
         instance.opModeManager=eventLoop.getOpModeManager();
+        instance.opModeManager.registerListener(instance);
     }
 
     public static void attach()
     {
-        attached=PhotonCore.addLynxCommandListener(instance);
+        instance.attached=PhotonCore.addLynxCommandListener(instance);
         if(PhotonCore.DEBUG)
         {
-            if(attached) RobotLog.i(TAG, "attach(): attached PhotonProfiler");
+            if(instance.attached) RobotLog.i(TAG, "attach(): instance.attached PhotonProfiler");
             else RobotLog.e(TAG, "attach(): failed attaching PhotonProfiler");
         }
 
         try {
-            logFile=new File(String.format("%s/FIRST/%s", Environment.getExternalStorageDirectory(), instance.opModeManager.getActiveOpModeName()+".log"));
-            if(!logFile.exists()) assert(logFile.createNewFile());
-            logFileWriter=new FileWriter(logFile);
+            instance.logFile=new File(String.format("%s/FIRST/%s", Environment.getExternalStorageDirectory(), instance.instance.opModeManager.getActiveOpModeName()+".log"));
+            if(!instance.logFile.exists()) assert(instance.logFile.createNewFile());
+            instance.logFileWriter=new FileWriter(instance.logFile);
+            instance.logging=true;
             instance.logEvent(EventType.ATTACHED);
         } catch (IOException e) {
             RobotLog.e(TAG, "attach(): failed opening file");
-            attached=false;
+            instance.attached=false;
         }
     }
     public static void annotateLoop()
@@ -61,20 +63,20 @@ public class PhotonProfiler implements OpModeManagerNotifier.Notifications, Phot
     }
 
     private synchronized void logEvent(EventType event) {
-        if(attached)
+        if(instance.attached&&logging)
         {
             try {
-                logFileWriter.write(String.format(Locale.ENGLISH, "%d %s\n", System.nanoTime(), event.toString()));
+                instance.logFileWriter.write(String.format(Locale.ENGLISH, "%d %s\n", System.nanoTime(), event.toString()));
             } catch (IOException e) {
                 RobotLog.ee(TAG, "logEvent(): failed logging event %s", event.toString());
             }
         }
     }
     private synchronized void logCommand(LynxCommand lynxCommand) {
-        if(attached)
+        if(instance.attached&&logging)
         {
             try {
-                logFileWriter.write(String.format(Locale.ENGLISH, "%d %s\n", System.nanoTime(), lynxCommand.toString()));
+                instance.logFileWriter.write(String.format(Locale.ENGLISH, "%d %s\n", System.nanoTime(), lynxCommand.toString()));
             } catch (IOException e) {
                 RobotLog.ee(TAG, "logEvent(): failed logging command %s", lynxCommand.toString());
             }
@@ -83,10 +85,10 @@ public class PhotonProfiler implements OpModeManagerNotifier.Notifications, Phot
 
     private synchronized void logResponseReceived(LynxMessage response, LynxCommand respondedCommand)
     {
-        if(attached)
+        if(instance.attached&&logging)
         {
             try {
-                logFileWriter.write(String.format(Locale.ENGLISH, "%d %s %s\n", System.nanoTime(), respondedCommand.toString(), response.toString()));
+                instance.logFileWriter.write(String.format(Locale.ENGLISH, "%d %s %s\n", System.nanoTime(), respondedCommand.toString(), response.toString()));
             } catch (IOException e) {
                 RobotLog.ee(TAG, "logEvent(): failed logging response %s for command %s", response.toString(), respondedCommand.toString());
             }
@@ -107,6 +109,7 @@ public class PhotonProfiler implements OpModeManagerNotifier.Notifications, Phot
     @Override
     public void onOpModePostStop(OpMode opMode) {
         logEvent(EventType.PRE_STOP);
+        logging=false;
     }
 
     @Override
