@@ -8,16 +8,14 @@ repositories {
 }
 
 android {
-    compileSdkVersion 30
-    buildToolsVersion "30.0.3"
+    compileSdkVersion 29
 
     defaultConfig {
         minSdkVersion 24
-        targetSdkVersion 30
+        //noinspection ExpiredTargetSdkVersion
+        targetSdkVersion 28
         versionCode 1
         versionName "1.0"
-
-        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
     buildTypes {
         release {
@@ -45,12 +43,10 @@ afterEvaluate {
 
 dependencies {
     compileOnly 'org.jetbrains:annotations:15.0'
-    compileOnly "androidx.annotation:annotation:1.4.0"
+    compileOnly "androidx.annotation:annotation:1.7.0"
 
-    compileOnly 'org.firstinspires.ftc:RobotCore:8.1.0'
-    compileOnly 'org.firstinspires.ftc:Hardware:8.1.0'
-    compileOnly 'org.firstinspires.ftc:FtcCommon:8.1.0'
+    compileOnly 'org.firstinspires.ftc:RobotCore:9.0.0'
+    compileOnly 'org.firstinspires.ftc:Hardware:9.0.0'
+    compileOnly 'org.firstinspires.ftc:FtcCommon:9.0.0'
     compileOnly 'org.reflections:reflections:0.10.2'
-    compileOnly 'commons-beanutils:commons-beanutils:1.9.4'
-
 }
