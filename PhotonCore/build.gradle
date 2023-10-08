@@ -45,8 +45,8 @@ dependencies {
     compileOnly 'org.jetbrains:annotations:15.0'
     compileOnly "androidx.annotation:annotation:1.7.0"
 
-    compileOnly 'org.firstinspires.ftc:RobotCore:9.0.0'
-    compileOnly 'org.firstinspires.ftc:Hardware:9.0.0'
-    compileOnly 'org.firstinspires.ftc:FtcCommon:9.0.0'
+    compileOnly 'org.firstinspires.ftc:RobotCore:9.0.1'
+    compileOnly 'org.firstinspires.ftc:Hardware:9.0.1'
+    compileOnly 'org.firstinspires.ftc:FtcCommon:9.0.1'
     compileOnly 'org.reflections:reflections:0.10.2'
 }

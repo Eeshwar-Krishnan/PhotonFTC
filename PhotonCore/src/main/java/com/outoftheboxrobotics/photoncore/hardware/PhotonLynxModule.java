@@ -13,12 +13,14 @@ import com.qualcomm.hardware.lynx.commands.LynxDatagram;
 import com.qualcomm.hardware.lynx.commands.LynxMessage;
 import com.qualcomm.hardware.lynx.commands.LynxRespondable;
 import com.qualcomm.hardware.lynx.commands.LynxResponse;
+import com.qualcomm.hardware.lynx.commands.core.LynxGetBulkInputDataResponse;
 import com.qualcomm.hardware.lynx.commands.standard.LynxAck;
 import com.qualcomm.hardware.lynx.commands.standard.LynxNack;
 import com.qualcomm.robotcore.util.RobotLog;
 
 import org.firstinspires.ftc.robotcore.internal.system.Assert;
 
+import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.List;
@@ -208,17 +210,31 @@ public class PhotonLynxModule extends LynxModule {
             super.releaseNetworkTransmissionLock(message);
     }
 
+    @Override
+    public BulkData getBulkData() {
+        return super.getBulkData();
+    }
+
     /**
      * Feed the bulk data acquired from a different source to the PhotonLynxModule
      * Standard use is when interleaving I2C devices
-     * @param data The data to be fed to the PhotonLynxModule
+     * @param response The response from a LynxGetBulkInputDataCommand to be fed to the PhotonLynxModule
      */
-    public void feedBulkData(BulkData data)
+    public void feedBulkData(LynxGetBulkInputDataResponse response)
     {
-        synchronized (bulkCachingLock)
-        {
-            lastBulkData=data;
+        try {
+            Constructor<BulkData> constructor = BulkData.class.getDeclaredConstructor(LynxGetBulkInputDataResponse.class, boolean.class);
+            constructor.setAccessible(true);
+            synchronized (bulkCachingLock)
+            {
+                lastBulkData=constructor.newInstance(response,false);
+            }
+
+        } catch (NoSuchMethodException | InvocationTargetException | IllegalAccessException |
+                 InstantiationException e) {
+            handleException(e);
         }
+
     }
     @Override
     public int hashCode() {
