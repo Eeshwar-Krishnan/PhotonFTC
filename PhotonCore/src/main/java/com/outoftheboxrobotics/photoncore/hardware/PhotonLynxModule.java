@@ -190,6 +190,13 @@ public class PhotonLynxModule extends LynxModule {
         }
     }
     private List<PhotonLynxCommandListener> listeners = new ArrayList<PhotonLynxCommandListener>();
+
+    /**
+     * Adds a PhotonLynxCommandListener to the PhotonLynxModule
+     * Used for debugging purposes with PhotonProfiler
+     * @param listener Listener to be added
+     * @return Success
+     */
     public boolean addLynxCommandListener(PhotonLynxCommandListener listener)
     {
         listeners.add(listener);
@@ -201,6 +208,18 @@ public class PhotonLynxModule extends LynxModule {
             super.releaseNetworkTransmissionLock(message);
     }
 
+    /**
+     * Feed the bulk data acquired from a different source to the PhotonLynxModule
+     * Standard use is when interleaving I2C devices
+     * @param data The data to be fed to the PhotonLynxModule
+     */
+    public void feedBulkData(BulkData data)
+    {
+        synchronized (bulkCachingLock)
+        {
+            lastBulkData=data;
+        }
+    }
     @Override
     public int hashCode() {
         return Objects.hashCode(moduleAddress);

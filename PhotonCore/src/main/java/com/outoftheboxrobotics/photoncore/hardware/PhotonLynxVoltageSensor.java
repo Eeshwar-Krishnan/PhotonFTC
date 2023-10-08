@@ -2,6 +2,8 @@ package com.outoftheboxrobotics.photoncore.hardware;
 
 import android.content.Context;
 
+import com.outoftheboxrobotics.photoncore.Photon;
+import com.outoftheboxrobotics.photoncore.PhotonLastKnown;
 import com.qualcomm.hardware.lynx.LynxModule;
 import com.qualcomm.hardware.lynx.LynxVoltageSensor;
 import com.qualcomm.robotcore.exception.RobotCoreException;
@@ -17,15 +19,17 @@ public class PhotonLynxVoltageSensor extends LynxVoltageSensor {
         lastKnownVoltage.setValue(0.0);
     }
 
-    private final LastKnown<Double> lastKnownVoltage = new LastKnown<>();
+    // TODO: Check if the interval read by the RC app would be better than setting it as cannot expire
+    private final PhotonLastKnown<Double> lastKnownVoltage = new PhotonLastKnown<>(false);
 
     /**
-     * Get the cached voltage. This also gets the voltage that is read by the RC app
+     * Gets the cached voltage of this voltage sensor. Since it is used by
+     * @return
      */
     @SuppressWarnings({"unused"})
     public double getCachedVoltage()
     {
-        return lastKnownVoltage.getNonTimedValue();
+        return lastKnownVoltage.getValue();
     }
     @Override
     public double getVoltage() {

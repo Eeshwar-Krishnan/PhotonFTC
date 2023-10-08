@@ -20,7 +20,7 @@ public class PeriodicSupplier<T> {
         this.supplier = supplier;
     }
 
-    protected void update(){
+    public void update(){
         if(!inFlight.get() && System.currentTimeMillis() > timer.get()){
             CompletableFuture<T> future = supplier.getSupplier();
             inFlight.set(true);

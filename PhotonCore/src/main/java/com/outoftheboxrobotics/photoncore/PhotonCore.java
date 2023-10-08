@@ -20,11 +20,14 @@ import com.qualcomm.hardware.bosch.BHI260IMU;
 import com.qualcomm.hardware.bosch.BNO055IMUNew;
 import com.qualcomm.hardware.lynx.LynxController;
 import com.qualcomm.hardware.lynx.LynxDcMotorController;
+import com.qualcomm.hardware.lynx.LynxI2cDeviceSynch;
 import com.qualcomm.hardware.lynx.LynxI2cDeviceSynchV1;
 import com.qualcomm.hardware.lynx.LynxModule;
 import com.qualcomm.hardware.lynx.LynxServoController;
 import com.qualcomm.hardware.lynx.LynxUsbDevice;
 import com.qualcomm.hardware.lynx.LynxVoltageSensor;
+import com.qualcomm.hardware.rev.Rev2mDistanceSensor;
+import com.qualcomm.hardware.rev.RevColorSensorV3;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.eventloop.opmode.OpModeManager;
 import com.qualcomm.robotcore.eventloop.opmode.OpModeManagerImpl;
@@ -36,7 +39,9 @@ import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorImpl;
 import com.qualcomm.robotcore.hardware.HardwareDevice;
 import com.qualcomm.robotcore.hardware.HardwareMap;
+import com.qualcomm.robotcore.hardware.I2cDeviceSynch;
 import com.qualcomm.robotcore.hardware.I2cDeviceSynchDeviceWithParameters;
+import com.qualcomm.robotcore.hardware.I2cDeviceSynchSimple;
 import com.qualcomm.robotcore.hardware.Servo;
 import com.qualcomm.robotcore.util.RobotLog;
 
@@ -58,51 +63,7 @@ public class PhotonCore implements OpModeManagerNotifier.Notifications {
 
     private OpModeManagerImpl opModeManager;
 
-<<<<<<< HEAD
     @SuppressWarnings({"unused"})
-=======
-    public static class ExperimentalParameters{
-        private final AtomicBoolean singlethreadedOptimized = new AtomicBoolean(true);
-        private final AtomicInteger maximumParallelCommands = new AtomicInteger(4);
-
-        public void setSinglethreadedOptimized(boolean state){
-            this.singlethreadedOptimized.set(state);
-        }
-
-        public boolean setMaximumParallelCommands(int maximumParallelCommands){
-            if(maximumParallelCommands <= 0){
-                return false;
-            }
-            this.maximumParallelCommands.set(maximumParallelCommands);
-            return true;
-        }
-    }
-
-    public static ExperimentalParameters experimental = new ExperimentalParameters();
-
-    public PhotonCore(){
-        CONTROL_HUB = null;
-        EXPANSION_HUB = null;
-        enabled = new AtomicBoolean(false);
-        threadEnabled = new AtomicBoolean(false);
-        usbDeviceMap = new HashMap<>();
-    }
-
-    public static void enable(){
-        instance.enabled.set(true);
-        if(CONTROL_HUB != null && CONTROL_HUB.getBulkCachingMode() == LynxModule.BulkCachingMode.OFF){
-            CONTROL_HUB.setBulkCachingMode(LynxModule.BulkCachingMode.AUTO);
-        }
-        if(EXPANSION_HUB != null && EXPANSION_HUB.getBulkCachingMode() == LynxModule.BulkCachingMode.OFF){
-            EXPANSION_HUB.setBulkCachingMode(LynxModule.BulkCachingMode.AUTO);
-        }
-    }
-
-    public static void disable(){
-        instance.enabled.set(false);
-    }
-
->>>>>>> main
     @OnCreateEventLoop
     public static void attachEventLoop(Context context, FtcEventLoop eventLoop)
     {
@@ -237,7 +198,7 @@ public class PhotonCore implements OpModeManagerNotifier.Notifications {
                             }
 
                         }
-<<<<<<< HEAD
+
                         for(CRServo servo:hardwareMap.getAll(CRServoImpl.class))
                         {
                             if(servo.getController()==device)
@@ -254,45 +215,6 @@ public class PhotonCore implements OpModeManagerNotifier.Notifications {
                         device=photonLynxServoController;
                     } catch (RobotCoreException | InterruptedException ignored) {
 
-=======
-                        setLynxObject(device2, replacements);
-                        RobotLog.e("" + (device2 instanceof LynxI2cDeviceSynch));
-                    } catch (Exception ignored) {
-                    }
-                }else if (device instanceof I2cDeviceSynchSimple){
-                    try {
-                        I2cDeviceSynchSimple device2 = (I2cDeviceSynchSimple) ReflectionUtils.getField(device.getClass(), "deviceClient").get(device);
-                        setLynxObject(device2, replacements);
-                    } catch (Exception ignored) {
-                    }
-                }else {
-                    setLynxObject(device, replacements);
-                }
-                if(device instanceof Rev2mDistanceSensor){
-                    I2cDeviceSynch tmp = null;
-                    boolean owned = false;
-                    try {
-                        tmp = (I2cDeviceSynch) ReflectionUtils.getField(device.getClass(), "deviceClient").get(device);
-                        owned = (boolean) ReflectionUtils.getField(device.getClass(), "deviceClientIsOwned").get(device);
-                    } catch (IllegalAccessException e) {
-                        e.printStackTrace();
-                    }
-                    Rev2mDistanceSensorEx vl53L0XEx = new Rev2mDistanceSensorEx(tmp, owned);
-                    replacedNeutrino.put((String) map.getNamesOf(device).toArray()[0], vl53L0XEx);
-                    removedNeutrino.put((String) map.getNamesOf(device).toArray()[0], device);
-                }
-                if(device instanceof RevColorSensorV3){
-                    RevColorSensorV3Ex revColorSensorV3Ex;
-                    boolean owned = false;
-                    try {
-                        I2cDeviceSynchSimple tmp = (I2cDeviceSynchSimple) ReflectionUtils.getField(device.getClass(), "deviceClient").get(device);
-                        owned = (boolean) ReflectionUtils.getField(device.getClass(), "deviceClientIsOwned").get(device);
-                        revColorSensorV3Ex = new RevColorSensorV3Ex(tmp, owned);
-                        replacedNeutrino.put((String) map.getNamesOf(device).toArray()[0], revColorSensorV3Ex);
-                        removedNeutrino.put((String) map.getNamesOf(device).toArray()[0], device);
-                    } catch (IllegalAccessException e) {
-                        e.printStackTrace();
->>>>>>> main
                     }
                 }
 
@@ -327,7 +249,7 @@ public class PhotonCore implements OpModeManagerNotifier.Notifications {
 
                 if(device instanceof BNO055IMUNew&& !(device instanceof PhotonBNO055IMUNew))
                 {
-                    Integer bus = ReflectionUtils.getFieldValue(device.getDeviceClient(), "bus");
+                    int bus = ReflectionUtils.getFieldValue(device.getDeviceClient(), "bus");
                     PhotonI2cDeviceSynch deviceClient;
                     if(device.getDeviceClient() instanceof LynxI2cDeviceSynchV1)
                     {
