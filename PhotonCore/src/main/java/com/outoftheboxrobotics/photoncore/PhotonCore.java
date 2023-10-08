@@ -58,7 +58,51 @@ public class PhotonCore implements OpModeManagerNotifier.Notifications {
 
     private OpModeManagerImpl opModeManager;
 
+<<<<<<< HEAD
     @SuppressWarnings({"unused"})
+=======
+    public static class ExperimentalParameters{
+        private final AtomicBoolean singlethreadedOptimized = new AtomicBoolean(true);
+        private final AtomicInteger maximumParallelCommands = new AtomicInteger(4);
+
+        public void setSinglethreadedOptimized(boolean state){
+            this.singlethreadedOptimized.set(state);
+        }
+
+        public boolean setMaximumParallelCommands(int maximumParallelCommands){
+            if(maximumParallelCommands <= 0){
+                return false;
+            }
+            this.maximumParallelCommands.set(maximumParallelCommands);
+            return true;
+        }
+    }
+
+    public static ExperimentalParameters experimental = new ExperimentalParameters();
+
+    public PhotonCore(){
+        CONTROL_HUB = null;
+        EXPANSION_HUB = null;
+        enabled = new AtomicBoolean(false);
+        threadEnabled = new AtomicBoolean(false);
+        usbDeviceMap = new HashMap<>();
+    }
+
+    public static void enable(){
+        instance.enabled.set(true);
+        if(CONTROL_HUB != null && CONTROL_HUB.getBulkCachingMode() == LynxModule.BulkCachingMode.OFF){
+            CONTROL_HUB.setBulkCachingMode(LynxModule.BulkCachingMode.AUTO);
+        }
+        if(EXPANSION_HUB != null && EXPANSION_HUB.getBulkCachingMode() == LynxModule.BulkCachingMode.OFF){
+            EXPANSION_HUB.setBulkCachingMode(LynxModule.BulkCachingMode.AUTO);
+        }
+    }
+
+    public static void disable(){
+        instance.enabled.set(false);
+    }
+
+>>>>>>> main
     @OnCreateEventLoop
     public static void attachEventLoop(Context context, FtcEventLoop eventLoop)
     {
@@ -193,6 +237,7 @@ public class PhotonCore implements OpModeManagerNotifier.Notifications {
                             }
 
                         }
+<<<<<<< HEAD
                         for(CRServo servo:hardwareMap.getAll(CRServoImpl.class))
                         {
                             if(servo.getController()==device)
@@ -209,6 +254,45 @@ public class PhotonCore implements OpModeManagerNotifier.Notifications {
                         device=photonLynxServoController;
                     } catch (RobotCoreException | InterruptedException ignored) {
 
+=======
+                        setLynxObject(device2, replacements);
+                        RobotLog.e("" + (device2 instanceof LynxI2cDeviceSynch));
+                    } catch (Exception ignored) {
+                    }
+                }else if (device instanceof I2cDeviceSynchSimple){
+                    try {
+                        I2cDeviceSynchSimple device2 = (I2cDeviceSynchSimple) ReflectionUtils.getField(device.getClass(), "deviceClient").get(device);
+                        setLynxObject(device2, replacements);
+                    } catch (Exception ignored) {
+                    }
+                }else {
+                    setLynxObject(device, replacements);
+                }
+                if(device instanceof Rev2mDistanceSensor){
+                    I2cDeviceSynch tmp = null;
+                    boolean owned = false;
+                    try {
+                        tmp = (I2cDeviceSynch) ReflectionUtils.getField(device.getClass(), "deviceClient").get(device);
+                        owned = (boolean) ReflectionUtils.getField(device.getClass(), "deviceClientIsOwned").get(device);
+                    } catch (IllegalAccessException e) {
+                        e.printStackTrace();
+                    }
+                    Rev2mDistanceSensorEx vl53L0XEx = new Rev2mDistanceSensorEx(tmp, owned);
+                    replacedNeutrino.put((String) map.getNamesOf(device).toArray()[0], vl53L0XEx);
+                    removedNeutrino.put((String) map.getNamesOf(device).toArray()[0], device);
+                }
+                if(device instanceof RevColorSensorV3){
+                    RevColorSensorV3Ex revColorSensorV3Ex;
+                    boolean owned = false;
+                    try {
+                        I2cDeviceSynchSimple tmp = (I2cDeviceSynchSimple) ReflectionUtils.getField(device.getClass(), "deviceClient").get(device);
+                        owned = (boolean) ReflectionUtils.getField(device.getClass(), "deviceClientIsOwned").get(device);
+                        revColorSensorV3Ex = new RevColorSensorV3Ex(tmp, owned);
+                        replacedNeutrino.put((String) map.getNamesOf(device).toArray()[0], revColorSensorV3Ex);
+                        removedNeutrino.put((String) map.getNamesOf(device).toArray()[0], device);
+                    } catch (IllegalAccessException e) {
+                        e.printStackTrace();
+>>>>>>> main
                     }
                 }
 
