@@ -127,7 +127,7 @@ class TestTeleOp extends LinearOpMode {
         // change the number
 
         for(PhotonLynxModule module: modules)
-            modules.setBulkCachingMode(BulkCachingMode.MANUAL); // Manual mode is required here
+            module.setBulkCachingMode(BulkCachingMode.MANUAL); // Manual mode is required here
         
         //...
         
