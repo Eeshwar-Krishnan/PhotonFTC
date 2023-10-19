@@ -137,8 +137,8 @@ class TestTeleOp extends LinearOpMode {
         {
             modules.get(1).clearBulkCache(); // Again, adjust number here based on which IMU you use
             
-            imu.scheduleInterleavedCommand(new PhotonLynxGetBulkInputCommand(usedModule));
-            YawPitchRollAngles angles = imu.getYawPitchRollAngles();
+            imu.scheduleInterleavedCommand(new PhotonLynxGetBulkInputDataCommand(usedModule));
+            YawPitchRollAngles angles = imu.getRobotYawPitchRollAngles();
             usedModule.feedBulkData((LynxGetBulkInputDataResponse)imu.getResult());
             
             // ...
