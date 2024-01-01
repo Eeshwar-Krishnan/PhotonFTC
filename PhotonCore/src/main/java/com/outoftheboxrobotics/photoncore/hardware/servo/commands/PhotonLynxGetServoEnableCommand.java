@@ -1,15 +1,13 @@
 package com.outoftheboxrobotics.photoncore.hardware.servo.commands;
 
 import com.outoftheboxrobotics.photoncore.PhotonCommandBase;
+import com.outoftheboxrobotics.photoncore.PhotonCore;
 import com.qualcomm.hardware.lynx.LynxModuleIntf;
-import com.qualcomm.hardware.lynx.LynxNackException;
 import com.qualcomm.hardware.lynx.commands.LynxInterface;
 import com.qualcomm.hardware.lynx.commands.LynxMessage;
-import com.qualcomm.hardware.lynx.commands.core.LynxGetADCCommand;
 import com.qualcomm.hardware.lynx.commands.core.LynxGetServoEnableCommand;
 import com.qualcomm.hardware.lynx.commands.standard.LynxAck;
 import com.qualcomm.hardware.lynx.commands.standard.LynxNack;
-import com.qualcomm.robotcore.hardware.Servo;
 
 import java.util.concurrent.CompletableFuture;
 
@@ -36,6 +34,24 @@ public class PhotonLynxGetServoEnableCommand extends LynxGetServoEnableCommand i
     public void onNackReceived(LynxNack nack) {
         future.complete(nack);
         super.onNackReceived(nack);
+    }
+
+    @Override
+    public void acquireNetworkLock() throws InterruptedException {
+        if(PhotonCore.photon == null){
+            super.acquireNetworkLock();
+        }else {
+            PhotonCore.acquire(module);
+        }
+    }
+
+    @Override
+    public void releaseNetworkLock() throws InterruptedException {
+        if(PhotonCore.photon == null){
+            super.releaseNetworkLock();
+        }else {
+            PhotonCore.release(module);
+        }
     }
 
     @Override

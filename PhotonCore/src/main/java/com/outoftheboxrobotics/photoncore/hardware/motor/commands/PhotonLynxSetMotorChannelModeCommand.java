@@ -1,8 +1,8 @@
 package com.outoftheboxrobotics.photoncore.hardware.motor.commands;
 
 import com.outoftheboxrobotics.photoncore.PhotonCommandBase;
+import com.outoftheboxrobotics.photoncore.PhotonCore;
 import com.qualcomm.hardware.lynx.LynxModuleIntf;
-import com.qualcomm.hardware.lynx.LynxNackException;
 import com.qualcomm.hardware.lynx.commands.LynxInterface;
 import com.qualcomm.hardware.lynx.commands.LynxMessage;
 import com.qualcomm.hardware.lynx.commands.core.LynxSetMotorChannelModeCommand;
@@ -35,6 +35,24 @@ public class PhotonLynxSetMotorChannelModeCommand extends LynxSetMotorChannelMod
     public void onNackReceived(LynxNack nack) {
         future.complete(nack);
         super.onNackReceived(nack);
+    }
+
+    @Override
+    public void acquireNetworkLock() throws InterruptedException {
+        if(PhotonCore.photon == null){
+            super.acquireNetworkLock();
+        }else {
+            PhotonCore.acquire(module);
+        }
+    }
+
+    @Override
+    public void releaseNetworkLock() throws InterruptedException {
+        if(PhotonCore.photon == null){
+            super.releaseNetworkLock();
+        }else {
+            PhotonCore.release(module);
+        }
     }
 
     @Override

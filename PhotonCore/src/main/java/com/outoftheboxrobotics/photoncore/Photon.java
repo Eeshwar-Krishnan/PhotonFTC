@@ -17,6 +17,4 @@ public @interface Photon {
     int maximumParallelCommands() default 8;
 
     boolean singleThreadOptimized() default true;
-
-    boolean consistentLoopTimes() default false;
 }

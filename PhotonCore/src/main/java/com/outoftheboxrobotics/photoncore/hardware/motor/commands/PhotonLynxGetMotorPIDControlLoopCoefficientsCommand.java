@@ -1,8 +1,8 @@
 package com.outoftheboxrobotics.photoncore.hardware.motor.commands;
 
 import com.outoftheboxrobotics.photoncore.PhotonCommandBase;
+import com.outoftheboxrobotics.photoncore.PhotonCore;
 import com.qualcomm.hardware.lynx.LynxModuleIntf;
-import com.qualcomm.hardware.lynx.LynxNackException;
 import com.qualcomm.hardware.lynx.commands.LynxInterface;
 import com.qualcomm.hardware.lynx.commands.LynxMessage;
 import com.qualcomm.hardware.lynx.commands.core.LynxGetMotorPIDControlLoopCoefficientsCommand;
@@ -35,12 +35,20 @@ public class PhotonLynxGetMotorPIDControlLoopCoefficientsCommand extends LynxGet
 
     @Override
     public void acquireNetworkLock() throws InterruptedException {
-        return;
+        if(PhotonCore.photon == null){
+            super.acquireNetworkLock();
+        }else {
+            PhotonCore.acquire(module);
+        }
     }
 
     @Override
     public void releaseNetworkLock() throws InterruptedException {
-        return;
+        if(PhotonCore.photon == null){
+            super.releaseNetworkLock();
+        }else {
+            PhotonCore.release(module);
+        }
     }
 
     public PhotonLynxGetMotorPIDControlLoopCoefficientsCommand(LynxModuleIntf module, int motorZ, DcMotor.RunMode mode) {

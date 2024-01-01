@@ -21,9 +21,4 @@ public class PhotonServo extends ServoImplEx {
     {
         return controller.getServoPositionAsync(this.portNumber);
     }
-
-    CompletableFuture<PwmControl.PwmRange> getPwmRangeAsync(int servo)
-    {
-        return controller.getServoPwmRangeAsync(this.portNumber);
-    }
 }

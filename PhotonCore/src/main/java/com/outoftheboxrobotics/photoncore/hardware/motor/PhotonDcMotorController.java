@@ -12,10 +12,6 @@ import org.firstinspires.ftc.robotcore.external.navigation.CurrentUnit;
 import java.util.concurrent.CompletableFuture;
 
 interface PhotonDcMotorController extends DcMotorControllerEx {
-    
-     CompletableFuture<Double> getMotorVelocityAsync(int motor);
-
-     CompletableFuture<Double> getMotorVelocityAsync(int motor, AngleUnit unit);
 
      CompletableFuture<PIDCoefficients> getPIDCoefficientsAsync(int motor, DcMotor.RunMode mode);
 
@@ -27,8 +23,6 @@ interface PhotonDcMotorController extends DcMotorControllerEx {
      CompletableFuture<Double> getMotorCurrentAsync(int motor, CurrentUnit unit);
      
      CompletableFuture<Double> getMotorCurrentAlertAsync(int motor, CurrentUnit unit);
-     
-     CompletableFuture<Boolean> isMotorOverCurrentAsync(int motor);
 
      CompletableFuture<DcMotor.RunMode> getMotorModeAsync(int motor);
      
@@ -41,8 +35,5 @@ interface PhotonDcMotorController extends DcMotorControllerEx {
      CompletableFuture<Integer> getMotorTargetPositionAsync(int motor);
 
      CompletableFuture<Boolean> isMotorEnabledAsync(int motor);
-     CompletableFuture<Integer> getMotorCurrentPositionAsync(int motor);
 
-     CompletableFuture<Boolean> isBusyAsync(int motor);
-     
 }

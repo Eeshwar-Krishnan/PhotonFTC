@@ -10,6 +10,4 @@ public interface PhotonServoController extends ServoControllerEx {
     CompletableFuture<Boolean> isServoPwmEnabledAsync(int servo);
 
     CompletableFuture<Double> getServoPositionAsync(int servo);
-
-    CompletableFuture<PwmControl.PwmRange> getServoPwmRangeAsync(int servo);
 }

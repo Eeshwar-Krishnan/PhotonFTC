@@ -39,13 +39,6 @@ public class PhotonDcMotor extends DcMotorImplEx {
         return controller.isMotorEnabledAsync(this.portNumber);
     }
 
-    public CompletableFuture<Double> getVelocityAsync() {
-        return controller.getMotorVelocityAsync(this.portNumber);
-    }
-    public CompletableFuture<Double> getVelocityAsync(AngleUnit unit) {
-        return controller.getMotorVelocityAsync(this.portNumber, unit);
-    }
-
     public CompletableFuture<PIDCoefficients> getPIDCoefficientsAsync(DcMotor.RunMode mode)
     {
         return controller.getPIDCoefficientsAsync(this.portNumber, mode);
@@ -57,11 +50,6 @@ public class PhotonDcMotor extends DcMotorImplEx {
     public CompletableFuture<Double> getCurrentAlertAsync(CurrentUnit unit)
     {
         return controller.getMotorCurrentAlertAsync(this.portNumber, unit);
-    }
-
-    public CompletableFuture<Boolean> isOverCurrentAsync()
-    {
-        return controller.isMotorOverCurrentAsync(this.portNumber);
     }
 
     public CompletableFuture<RunMode> getMotorModeAsync()
@@ -85,10 +73,6 @@ public class PhotonDcMotor extends DcMotorImplEx {
     public CompletableFuture<Integer> getMotorTargetPositionAsync()
     {
         return controller.getMotorTargetPositionAsync(this.portNumber);
-    }
-    public CompletableFuture<Integer> getMotorCurrentPositionAsync()
-    {
-        return controller.getMotorCurrentPositionAsync(this.portNumber);
     }
 
 }

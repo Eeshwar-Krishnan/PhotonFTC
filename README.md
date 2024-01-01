@@ -5,14 +5,8 @@ NOTE: This code will ONLY work on the REV Robotics Expansion Hub or REV Robotics
 
 This project is an initiative to push the FIRST api to its absolute limits, and to **give access to functionality and methods not normally exposed to the user**
 
-Projects at a glance:
- - **NeutrinoI2C**
-      - Speeding up I2C Sensors. Deprecated, merged into PhotonCore
- - **PhotonCore**
-     - Speeding up and paralleling the FTC control system for faster loop times
-
 ## Documentation:
- - [PhotonCore Overview](https://github.com/Eeshwar-Krishnan/PhotonFTC/blob/dev/doc/photon_overview.md)
+ - [PhotonCore Overview](https://photondocs.pages.dev/)
 
 ## Installation instructions :
 Installation is simple. Just go to build.gradle in your Teamcode module and add the following under repositories

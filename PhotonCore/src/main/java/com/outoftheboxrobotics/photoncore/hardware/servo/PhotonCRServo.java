@@ -32,8 +32,4 @@ public class PhotonCRServo extends CRServoImplEx {
     {
         return CompletableFuture.completedFuture(direction);
     }
-    CompletableFuture<PwmControl.PwmRange> getPwmRangeAsync(int servo)
-    {
-        return controller.getServoPwmRangeAsync(this.portNumber);
-    }
 }

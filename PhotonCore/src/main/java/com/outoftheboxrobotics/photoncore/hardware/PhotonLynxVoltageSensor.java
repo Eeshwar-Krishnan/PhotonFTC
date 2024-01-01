@@ -4,10 +4,18 @@ import android.content.Context;
 
 import com.outoftheboxrobotics.photoncore.Photon;
 import com.outoftheboxrobotics.photoncore.PhotonLastKnown;
+import com.outoftheboxrobotics.photoncore.hardware.motor.commands.PhotonLynxGetADCCommand;
 import com.qualcomm.hardware.lynx.LynxModule;
+import com.qualcomm.hardware.lynx.LynxNackException;
+import com.qualcomm.hardware.lynx.LynxUnsupportedCommandException;
+import com.qualcomm.hardware.lynx.LynxUsbUtil;
 import com.qualcomm.hardware.lynx.LynxVoltageSensor;
+import com.qualcomm.hardware.lynx.commands.core.LynxGetADCCommand;
+import com.qualcomm.hardware.lynx.commands.core.LynxGetADCResponse;
 import com.qualcomm.robotcore.exception.RobotCoreException;
 import com.qualcomm.robotcore.util.LastKnown;
+
+import java.util.concurrent.CompletableFuture;
 
 /**
  * Optimized LynxVoltage sensor. Allows the user to get access to the values
@@ -37,4 +45,29 @@ public class PhotonLynxVoltageSensor extends LynxVoltageSensor {
         lastKnownVoltage.setValue(voltage);
         return voltage;
     }
+
+    public CompletableFuture<Double> getVoltageAsync() {
+        PhotonLynxGetADCCommand command = new PhotonLynxGetADCCommand(this.getModule(), LynxGetADCCommand.Channel.BATTERY_MONITOR, LynxGetADCCommand.Mode.ENGINEERING);
+        try {
+            command.acquireNetworkLock();
+            getModule().sendCommand(command);
+            return command.getResponse().thenApply((message) -> {
+                try {
+                    command.releaseNetworkLock();
+                } catch (InterruptedException e) {
+                    handleException(e);
+                }
+                LynxGetADCResponse response = (LynxGetADCResponse) message;
+                int mv = response.getValue();
+                return mv * 0.001;
+            });
+        }
+        catch (InterruptedException | RuntimeException | LynxUnsupportedCommandException e)
+        {
+            handleException(e);
+        }
+        return CompletableFuture.completedFuture(LynxUsbUtil.makePlaceholderValue(0.0));
+    }
+
+
 }
