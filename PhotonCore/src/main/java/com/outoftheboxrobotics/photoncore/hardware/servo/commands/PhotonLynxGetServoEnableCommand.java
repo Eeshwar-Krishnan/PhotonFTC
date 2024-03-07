@@ -38,7 +38,7 @@ public class PhotonLynxGetServoEnableCommand extends LynxGetServoEnableCommand i
 
     @Override
     public void acquireNetworkLock() throws InterruptedException {
-        if(PhotonCore.photon == null){
+        if(!PhotonCore.attached()){
             super.acquireNetworkLock();
         }else {
             PhotonCore.acquire(module);
@@ -47,7 +47,7 @@ public class PhotonLynxGetServoEnableCommand extends LynxGetServoEnableCommand i
 
     @Override
     public void releaseNetworkLock() throws InterruptedException {
-        if(PhotonCore.photon == null){
+        if(!PhotonCore.attached()){
             super.releaseNetworkLock();
         }else {
             PhotonCore.release(module);

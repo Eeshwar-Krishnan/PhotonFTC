@@ -2,7 +2,6 @@ package com.outoftheboxrobotics.photoncore.hardware;
 
 import android.content.Context;
 
-import com.outoftheboxrobotics.photoncore.Photon;
 import com.outoftheboxrobotics.photoncore.PhotonLastKnown;
 import com.outoftheboxrobotics.photoncore.hardware.motor.commands.PhotonLynxGetADCCommand;
 import com.qualcomm.hardware.lynx.LynxModule;

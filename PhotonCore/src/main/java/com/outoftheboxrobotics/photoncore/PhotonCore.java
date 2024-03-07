@@ -2,6 +2,9 @@ package com.outoftheboxrobotics.photoncore;
 
 import android.content.Context;
 
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+
 import com.outoftheboxrobotics.photoncore.hardware.PhotonLynxVoltageSensor;
 import com.outoftheboxrobotics.photoncore.hardware.motor.PhotonDcMotor;
 import com.outoftheboxrobotics.photoncore.hardware.motor.PhotonLynxDcMotorController;
@@ -15,10 +18,8 @@ import com.qualcomm.hardware.lynx.LynxModule;
 import com.qualcomm.hardware.lynx.LynxModuleIntf;
 import com.qualcomm.hardware.lynx.LynxServoController;
 import com.qualcomm.hardware.lynx.LynxVoltageSensor;
-import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.eventloop.opmode.OpModeManager;
 import com.qualcomm.robotcore.eventloop.opmode.OpModeManagerImpl;
-import com.qualcomm.robotcore.eventloop.opmode.OpModeManagerNotifier;
 import com.qualcomm.robotcore.exception.RobotCoreException;
 import com.qualcomm.robotcore.hardware.CRServo;
 import com.qualcomm.robotcore.hardware.CRServoImpl;
@@ -31,6 +32,13 @@ import com.qualcomm.robotcore.util.RobotLog;
 
 import org.firstinspires.ftc.ftccommon.external.OnCreateEventLoop;
 
+import java.lang.annotation.Annotation;
+import java.lang.annotation.Documented;
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Inherited;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -38,12 +46,34 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.Semaphore;
 
-public class PhotonCore implements OpModeManagerNotifier.Notifications {
+import dev.frozenmilk.dairy.core.Feature;
+import dev.frozenmilk.dairy.core.dependencyresolution.dependencies.Dependency;
+import dev.frozenmilk.dairy.core.dependencyresolution.dependencyset.DependencySet;
+import dev.frozenmilk.dairy.core.wrapper.Wrapper;
+import dev.frozenmilk.util.cell.LateInitCell;
+
+public class PhotonCore implements Feature {
+    private final LateInitCell<Annotation> attach = new LateInitCell<>();
+    private final DependencySet dependencySet = new DependencySet(this)
+            .includesExactlyOneOf(Attach.class)
+            .bindOutputTo(attach);
+    @NonNull
+    @Override
+    public Set<Dependency<?, ?>> getDependencies() {
+        return dependencySet;
+    }
+    
     // Configuration and singleton values
     private static final String TAG = "PhotonCore";
     private static final PhotonCore instance = new PhotonCore();
     public static final boolean DEBUG=true;
-    public static Photon photon;
+    public static boolean attached() {
+        return instance.isAttached();
+    }
+    @Nullable
+    public static Attach photon() {
+        return (Attach) instance.attach.safeGet();
+    }
 
     private OpModeManagerImpl opModeManager;
 
@@ -54,8 +84,7 @@ public class PhotonCore implements OpModeManagerNotifier.Notifications {
     public static void attachEventLoop(Context context, FtcEventLoop eventLoop)
     {
         if(DEBUG) RobotLog.ii(TAG, "attachEventLoop: Attached PhotonCore to event loop");
-        eventLoop.getOpModeManager().registerListener(instance);
-        instance.opModeManager=eventLoop.getOpModeManager();
+        instance.opModeManager = eventLoop.getOpModeManager();
     }
 
     public static void acquire(LynxModuleIntf module) throws InterruptedException {
@@ -67,18 +96,17 @@ public class PhotonCore implements OpModeManagerNotifier.Notifications {
     }
 
     @Override
-    public void onOpModePreInit(OpMode opMode) {
+    public void preUserInitHook(@NonNull Wrapper opMode) {
         if(opModeManager.getActiveOpModeName().equals(OpModeManager.DEFAULT_OP_MODE_NAME))
             return;
 
-        photon = opMode.getClass().getAnnotation(Photon.class);
-        if(photon!=null) {
+        if(photon()!=null) {
 
             if(DEBUG) RobotLog.ii(TAG, "onOpModePreInit: Enabling PhotonCore optimizations for opMode %s", opModeManager.getActiveOpModeName());
 
-            HardwareMap hardwareMap = opMode.hardwareMap;
+            HardwareMap hardwareMap = opMode.getOpMode().hardwareMap;
             // Get the names of devices using reflection
-            Map<HardwareDevice, Set<String>> deviceNames = ReflectionUtils.getFieldValue(opMode.hardwareMap, "deviceNames");
+            Map<HardwareDevice, Set<String>> deviceNames = ReflectionUtils.getFieldValue(opMode.getOpMode().hardwareMap, "deviceNames");
             assert deviceNames!=null;
 
             // The first step is to replace all LynxModules with PhotonLynxModules
@@ -238,8 +266,17 @@ public class PhotonCore implements OpModeManagerNotifier.Notifications {
             }*/
         }
     }
-    @Override
-    public void onOpModePreStart(OpMode opMode) {}
-    @Override
-    public void onOpModePostStop(OpMode opMode) {}
+    
+    /**
+     * Add this to a {@link com.qualcomm.robotcore.eventloop.opmode.OpMode} in order to apply PhotonCore optimizations
+     */
+    @Documented
+    @Inherited
+    @Target(ElementType.TYPE)
+    @Retention(RetentionPolicy.RUNTIME)
+    public @interface Attach {
+        int maximumParallelCommands() default 8;
+        
+        boolean singleThreadOptimized() default true;
+    }
 }

@@ -34,7 +34,7 @@ public class PhotonLynxGetMotorChannelEnableCommand extends LynxGetMotorChannelE
 
     @Override
     public void acquireNetworkLock() throws InterruptedException {
-        if(PhotonCore.photon == null){
+        if(!PhotonCore.attached()){
             super.acquireNetworkLock();
         }else {
             PhotonCore.acquire(module);
@@ -43,7 +43,7 @@ public class PhotonLynxGetMotorChannelEnableCommand extends LynxGetMotorChannelE
 
     @Override
     public void releaseNetworkLock() throws InterruptedException {
-        if(PhotonCore.photon == null){
+        if(!PhotonCore.attached()){
             super.releaseNetworkLock();
         }else {
             PhotonCore.release(module);
