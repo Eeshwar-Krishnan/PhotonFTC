@@ -5,6 +5,7 @@ plugins {
 
 repositories {
     mavenCentral()
+    maven { url 'https://jitpack.io' }
 }
 
 android {
@@ -42,8 +43,10 @@ afterEvaluate {
 }
 
 dependencies {
-    compileOnly 'org.jetbrains:annotations:15.0'
-    compileOnly "androidx.annotation:annotation:1.7.0"
+    compileOnly 'org.jetbrains:annotations:13.0'
+    compileOnly "androidx.annotation:annotation:1.1.0"
+
+    compileOnly('com.github.Dairy-Foundation.Dairy:Core:pre-release-2-0')
 
     compileOnly 'org.firstinspires.ftc:RobotCore:9.0.1'
     compileOnly 'org.firstinspires.ftc:Hardware:9.0.1'
