@@ -49,6 +49,8 @@ public class PhotonCore implements OpModeManagerNotifier.Notifications {
 
     private OpModeManagerImpl opModeManager;
 
+    public static int state = 0;
+
     private HashMap<LynxModuleIntf, Semaphore> mutexs;
 
     @SuppressWarnings({"unused"})
@@ -70,8 +72,12 @@ public class PhotonCore implements OpModeManagerNotifier.Notifications {
 
     @Override
     public void onOpModePreInit(OpMode opMode) {
-        if(opModeManager.getActiveOpModeName().equals(OpModeManager.DEFAULT_OP_MODE_NAME))
+        if(opModeManager.getActiveOpModeName().equals(OpModeManager.DEFAULT_OP_MODE_NAME)) {
+            state = 0;
             return;
+        }
+
+        state = 1;
 
         photon = opMode.getClass().getAnnotation(Photon.class);
         if(photon!=null) {
@@ -251,5 +257,7 @@ public class PhotonCore implements OpModeManagerNotifier.Notifications {
     @Override
     public void onOpModePreStart(OpMode opMode) {}
     @Override
-    public void onOpModePostStop(OpMode opMode) {}
+    public void onOpModePostStop(OpMode opMode) {
+        state = 0;
+    }
 }

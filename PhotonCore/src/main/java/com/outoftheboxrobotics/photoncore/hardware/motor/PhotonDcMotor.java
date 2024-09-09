@@ -21,10 +21,12 @@ import java.util.concurrent.CompletableFuture;
 @SuppressWarnings({"unused"})
 public class PhotonDcMotor extends DcMotorImplEx {
     protected PhotonLynxDcMotorController controller;
+    protected int port;
 
     public PhotonDcMotor(PhotonLynxDcMotorController controller, int port, Direction direction, @NonNull MotorConfigurationType motorType){
         super(controller, port, direction, motorType);
         this.controller=controller;
+        this.port = port;
     }
     public CompletableFuture<Double> getCurrentAsync(CurrentUnit unit)
     {

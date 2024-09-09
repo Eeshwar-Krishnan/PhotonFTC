@@ -11,6 +11,7 @@ import com.outoftheboxrobotics.photoncore.hardware.motor.commands.PhotonLynxGetM
 import com.outoftheboxrobotics.photoncore.hardware.motor.commands.PhotonLynxGetMotorPIDFControlLoopCoefficientsCommand;
 import com.outoftheboxrobotics.photoncore.hardware.motor.commands.PhotonLynxGetMotorTargetPositionCommand;
 import com.outoftheboxrobotics.photoncore.hardware.motor.commands.PhotonLynxGetMotorTargetVelocityCommand;
+import com.qualcomm.ftccommon.FtcEventLoop;
 import com.qualcomm.hardware.lynx.LynxDcMotorController;
 import com.qualcomm.hardware.lynx.LynxModule;
 import com.qualcomm.hardware.lynx.LynxNackException;
@@ -32,15 +33,22 @@ import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.PIDCoefficients;
 import com.qualcomm.robotcore.hardware.PIDFCoefficients;
 import com.qualcomm.robotcore.util.Range;
+import com.qualcomm.robotcore.util.RobotLog;
 
+import org.firstinspires.ftc.ftccommon.external.OnCreateEventLoop;
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 import org.firstinspires.ftc.robotcore.external.navigation.CurrentUnit;
 
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class PhotonLynxDcMotorController extends LynxDcMotorController implements PhotonDcMotorController {
+
+    private final long[] motorInternalRefreshRates = {0, 0, 0, 0};
+    private final long[] motorInternalLastRefresh = {0, 0, 0, 0};
+    private final double[] motorSetPowerSignals = {0, 0, 0, 0};
 
     public PhotonLynxDcMotorController(Context context, LynxModule module) throws RobotCoreException, InterruptedException {
         super(context, module);
@@ -305,5 +313,33 @@ public class PhotonLynxDcMotorController extends LynxDcMotorController implement
             handleException(e);
         }
         return CompletableFuture.completedFuture(LynxUsbUtil.makePlaceholderValue(true));
+    }
+
+    public synchronized void setMotorPowerAdv(int motor, double apiMotorPower) {
+        if(motorInternalRefreshRates[motor] != 0) {
+            motorSetPowerSignals[motor] = apiMotorPower;
+
+            //IMPORTANT: IF THE SET POWER IS ZERO, IMMEDIATELY PASS THROUGH
+            //THIS IS A CRITICAL SAFETY STEP.
+            if (apiMotorPower == 0) {
+                super.setMotorPower(motor, apiMotorPower);
+            }else {
+                updateRefreshes(motor);
+            }
+        }else {
+            super.setMotorPower(motor, apiMotorPower);
+        }
+    }
+
+    protected synchronized void setMotorRefreshRate(int motor, long rate) {
+        motorInternalRefreshRates[motor] = rate;
+    }
+
+    protected synchronized void updateRefreshes(int motor) {
+        long now = System.currentTimeMillis();
+        if(motorInternalLastRefresh[motor] - System.currentTimeMillis() >= motorInternalLastRefresh[motor]) {
+            super.setMotorPower(motor, motorSetPowerSignals[motor]);
+            motorInternalLastRefresh[motor] = now;
+        }
     }
 }

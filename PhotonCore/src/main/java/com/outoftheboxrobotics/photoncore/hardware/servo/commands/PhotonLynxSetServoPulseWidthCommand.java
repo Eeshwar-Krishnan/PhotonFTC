@@ -5,17 +5,18 @@ import com.outoftheboxrobotics.photoncore.PhotonCore;
 import com.qualcomm.hardware.lynx.LynxModuleIntf;
 import com.qualcomm.hardware.lynx.commands.LynxInterface;
 import com.qualcomm.hardware.lynx.commands.LynxMessage;
-import com.qualcomm.hardware.lynx.commands.core.LynxGetServoEnableCommand;
+import com.qualcomm.hardware.lynx.commands.core.LynxGetServoPulseWidthCommand;
+import com.qualcomm.hardware.lynx.commands.core.LynxSetServoPulseWidthCommand;
 import com.qualcomm.hardware.lynx.commands.standard.LynxAck;
 import com.qualcomm.hardware.lynx.commands.standard.LynxNack;
 
 import java.util.concurrent.CompletableFuture;
 
-public class PhotonLynxGetServoEnableCommand extends LynxGetServoEnableCommand implements PhotonCommandBase {
+public class PhotonLynxSetServoPulseWidthCommand extends LynxSetServoPulseWidthCommand implements PhotonCommandBase {
     private CompletableFuture<LynxMessage> future = new CompletableFuture<>();
 
-    public PhotonLynxGetServoEnableCommand(LynxModuleIntf module, int channelZ) {
-        super(module, channelZ);
+    public PhotonLynxSetServoPulseWidthCommand(LynxModuleIntf module, int channelZ, int usPulseWidth) {
+        super(module, channelZ, usPulseWidth);
     }
 
     @Override
@@ -64,6 +65,6 @@ public class PhotonLynxGetServoEnableCommand extends LynxGetServoEnableCommand i
         if (null == theInterface)
             return LynxInterface.ERRONEOUS_COMMAND_NUMBER;   // should never happen in working system, but might if pretending
 
-        return theInterface.getBaseCommandNumber() + 36;
+        return theInterface.getBaseCommandNumber() + 34;
     }
 }
