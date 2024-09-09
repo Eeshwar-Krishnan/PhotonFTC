@@ -81,6 +81,7 @@ public class PhotonCore implements OpModeManagerNotifier.Notifications {
 
         photon = opMode.getClass().getAnnotation(Photon.class);
         if(photon!=null) {
+            RobotLog.ii(TAG, "PHOTON ACTIVATED");
 
             if(DEBUG) RobotLog.ii(TAG, "onOpModePreInit: Enabling PhotonCore optimizations for opMode %s", opModeManager.getActiveOpModeName());
 
