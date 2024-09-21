@@ -1,30 +1,106 @@
-# PhotonFTC
-[![](https://jitpack.io/v/Eeshwar-Krishnan/PhotonFTC.svg)](https://jitpack.io/#Eeshwar-Krishnan/PhotonFTC)
+# PhotonCore Documentation 📘
 
-NOTE: This code will ONLY work on the REV Robotics Expansion Hub or REV Robotics Control Hub. No Modern Robotics system is supported!
+## Table of Contents
+1. [Introduction](#introduction)
+2. [Classes Overview](#classes-overview)
+    - [PhotonDcMotor](#photondcmotor)
+    - [PhotonCRServo](#photoncrservo)
+    - [PhotonServo](#photonservo)
+    - [PhotonLynxServoController](#photonlynxservocontroller)
+    - [PhotonAdvancedDcMotor](#photonadvanceddcmotor)
+    - [PhotonLynxCommandListener](#photonlynxcommandlistener)
+3. [Installation Guide](#installation-guide)
+4. [Usage Guide](#usage-guide)
+5. [Conclusion](#conclusion)
 
-This project is an initiative to push the FIRST api to its absolute limits, and to **give access to functionality and methods not normally exposed to the user**
+## Introduction
 
-## Documentation:
- - [PhotonCore Overview](https://photondocs.pages.dev/)
+**PhotonCore** is a library designed for FIRST Tech Challenge (FTC) robotics teams to provide advanced control over motors and servos. It enhances the functionality of the standard FTC SDK by adding asynchronous operations and advanced control mechanisms.
 
-## Installation instructions :
-Installation is simple. Just go to build.gradle in your Teamcode module and add the following under repositories
+---
 
-```
-maven { url = 'https://jitpack.io' }
-```
+## Classes Overview
 
-Then add the following under dependencies
+### PhotonDcMotor
 
-```
-implementation 'com.github.Eeshwar-Krishnan:PhotonFTC:v3.0.2-ALPHA'
-```
+- **Purpose**: This class extends the functionality of a DC motor by providing asynchronous operations.
+- **Key Features**:
+  - **Asynchronous Methods**: Allows fetching motor properties like current, power, and PID coefficients asynchronously.
+  - **Enhanced Control**: Offers methods to get the corrected motor current and check if the motor is enabled asynchronously.
+- **Why Needed**: It improves the responsiveness and control of the robot by leveraging asynchronous programming, which is crucial for real-time robotics applications.
 
-Then run a gradle sync, and everything should download!
+### PhotonCRServo
 
-## OnBotJava:
-This library can be ported to OnBotJava, however I strongly recommend anyone using this library to use it in Android Studio to avoid a lot of pain that will come from porting it.
+- **Purpose**: Extends the `CRServoImplEx` class to provide asynchronous control over continuous rotation servos.
+- **Key Features**:
+  - **Async Direction and Power**: Methods to get the servo's direction and power asynchronously.
+- **Why Needed**: Asynchronous control allows for smoother and more responsive servo operations, which is essential in robotics for precise movements.
 
-## Important Note:
-This API is still a work in progress and is subject to change. The basic usage of the API will remain the same for the forseeable future, but new features will be added as teams share feedback on things they want to see. 
+### PhotonServo
+
+- **Purpose**: Provides asynchronous control for standard servos.
+- **Key Features**:
+  - **Async Position**: Methods to check if PWM is enabled and get the servo position asynchronously.
+- **Why Needed**: Enhances servo control by allowing operations to be performed without blocking the main thread, which is vital for maintaining performance in complex robotics tasks.
+
+### PhotonLynxServoController
+
+- **Purpose**: Manages servos connected to a Lynx module, providing asynchronous operations for servo control.
+- **Key Features**:
+  - **PWM Control**: Asynchronously checks if PWM is enabled and retrieves servo positions.
+- **Why Needed**: Provides non-blocking operations that help in managing multiple servos efficiently in a robotics application.
+
+### PhotonAdvancedDcMotor
+
+- **Purpose**: Provides advanced control features for DC motors.
+- **Key Features**:
+  - **Cache Tolerance**: Allows setting a tolerance level for motor power changes to avoid unnecessary updates.
+  - **Refresh Rate Control**: Manages how frequently motor power updates occur to optimize performance.
+- **Why Needed**: Offers fine-grained control over motor operations, which is crucial for optimizing power usage and performance in competitive robotics.
+
+### PhotonLynxCommandListener
+
+- **Purpose**: Interface for listening to Lynx commands and their responses.
+- **Key Features**:
+  - **Command Handling**: Methods to handle commands and responses from the Lynx module.
+- **Why Needed**: Essential for monitoring and reacting to command execution in real-time, ensuring that the robot's operations are synchronized and efficient.
+
+---
+
+## Installation Guide
+
+To install PhotonCore for your FTC robotics project, follow these steps:
+
+1. **Download the Library**: Clone or download the PhotonCore repository from GitHub.
+   
+2. **Integrate with FTC SDK**:
+   - Copy the PhotonCore directory into your FTC project’s `src/main/java` directory.
+
+3. **Configure Build Scripts**:
+   - Ensure your `build.gradle` file includes the necessary dependencies for PhotonCore.
+
+4. **Sync Project**: Open your project in Android Studio and sync to ensure all dependencies are correctly configured.
+
+---
+
+## Usage Guide
+
+To use PhotonCore in your FTC robotics project:
+
+1. **Initialize Components**:
+   - Use the classes provided by PhotonCore to initialize motors and servos in your robot's hardware map.
+
+2. **Implement Asynchronous Operations**:
+   - Replace standard synchronous calls with PhotonCore's asynchronous methods to enhance performance.
+
+3. **Control Motors and Servos**:
+   - Utilize advanced features like cache tolerance and refresh rate control for precise motor and servo operations.
+
+4. **Monitor Commands**:
+   - Implement the `PhotonLynxCommandListener` to handle and respond to Lynx commands effectively.
+
+---
+
+## Conclusion
+
+PhotonCore enhances the FTC SDK by providing advanced control features and asynchronous operations for motors and servos. By integrating PhotonCore, teams can achieve smoother and more efficient robot control, which is crucial for competitive robotics.
