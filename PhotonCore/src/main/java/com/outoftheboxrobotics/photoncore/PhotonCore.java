@@ -29,6 +29,7 @@ import com.qualcomm.robotcore.hardware.HardwareMap;
 import com.qualcomm.robotcore.hardware.Servo;
 import com.qualcomm.robotcore.hardware.configuration.ConfigurationTypeManager;
 import com.qualcomm.robotcore.hardware.configuration.typecontainers.MotorConfigurationType;
+import com.qualcomm.robotcore.hardware.configuration.typecontainers.ServoConfigurationType;
 import com.qualcomm.robotcore.util.RobotLog;
 
 import org.firstinspires.ftc.ftccommon.external.OnCreateEventLoop;
@@ -158,6 +159,7 @@ public class PhotonCore implements OpModeManagerNotifier.Notifications {
                         hardwareMap.servoController.remove(deviceName);
                         hardwareMap.put(deviceName, photonLynxServoController);
                         hardwareMap.servoController.put(deviceName, photonLynxServoController);
+                        photonLynxServoController.initializeHardware();
                         List<Servo> servos = hardwareMap.getAll(Servo.class);
                         for(Servo servo:servos)
                         {
@@ -166,6 +168,10 @@ public class PhotonCore implements OpModeManagerNotifier.Notifications {
                                 String servoName=Objects.requireNonNull(deviceNames.get(servo)).iterator().next();
                                 hardwareMap.remove(servoName, servo);
                                 hardwareMap.servo.remove(servoName);
+
+                                ServoConfigurationType type = new ServoConfigurationType();
+                                //type.set
+
                                 PhotonServo photonServo = new PhotonServo(photonLynxServoController, servo.getPortNumber());
                                 hardwareMap.put(servoName, photonServo);
                                 hardwareMap.servo.put(servoName, photonServo);
