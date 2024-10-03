@@ -18,7 +18,7 @@ maven { url = 'https://jitpack.io' }
 Then add the following under dependencies
 
 ```
-implementation 'com.github.Eeshwar-Krishnan:PhotonFTC:v3.0.2-ALPHA'
+implementation 'com.github.Eeshwar-Krishnan:PhotonFTC:v3.0.3-ALPHA'
 ```
 
 Then run a gradle sync, and everything should download!
