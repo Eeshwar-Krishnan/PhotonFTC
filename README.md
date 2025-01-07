@@ -1,3 +1,10 @@
+# NOTICE - ARCHIVED
+
+It's been a fun road, but I unfortunately am finding myself with less and less time to maintain this. It isn't really in a stable state and I know the path to fix it, but I do not have time to make the changes. If someone wants to fork and maintain it feel free and I'll throw my support behind that, but other then that, thank everyone so much for the wonderful journey that this has been, and I hope that I at least was able to provide some level of advancement to some teams through this.
+
+- Eeshwar
+
+
 # PhotonFTC
 [![](https://jitpack.io/v/Eeshwar-Krishnan/PhotonFTC.svg)](https://jitpack.io/#Eeshwar-Krishnan/PhotonFTC)
 
